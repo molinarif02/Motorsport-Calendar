@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Motorsport calendar stack - see docs/deployment.md
+#
+#   docker compose run --rm generator validate     check config/ offline
+#   docker compose run --rm generator run          one run in the foreground
+#   docker compose up -d                           generator loop + web server
+#   docker compose --profile tunnel up -d          ... plus Cloudflare Tunnel
+services:
+  generator:
+    image: ghcr.io/molinarif02/motorsport-calendar:latest   # multi-arch, built by GitHub Actions
+    build: .                                                # or build locally: docker compose build
+    restart: unless-stopped
+    command: ["run", "--loop"]
+    environment:
+      TZ: Europe/Rome                       # log timestamps only; events carry their own zones
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-} # optional (docs/streaming.md)
+    volumes:
+      - ./config:/config:ro                 # config.yaml + manual.yaml, editable on the host
+      - data:/data                          # state: revisions, last-good output, caches
+      - www:/www                            # published motorsport.ics + status.json
+    mem_limit: 256m
+    cpus: 0.5
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    logging: {driver: json-file, options: {max-size: 2m, max-file: "2"}}
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - www:/www:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:8080"                         # put your reverse proxy / the tunnel in front
+    mem_limit: 32m
+    logging: {driver: json-file, options: {max-size: 1m, max-file: "2"}}
+
+  # Optional public HTTPS without opening ports. Set TUNNEL_TOKEN in .env and route
+  # your hostname to http://web:8080 in the Cloudflare dashboard.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on: [web]
+    mem_limit: 64m
+
+volumes:
+  data:
+  www:

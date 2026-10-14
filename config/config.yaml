@@ -1,0 +1,147 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Motorsport calendar - configuration
+# =============================================================================
+# Re-read before every run: edit, save, and the next run applies it (no restart).
+# Check your edits offline with:   docker compose run --rm generator validate
+# Full reference: docs/configuration.md
+# =============================================================================
+
+log_level: info                     # debug | info | warn | error | crit  (applied on the next run)
+contact: you@example.com            # goes in the User-Agent; OpenStreetMap's policy requires a contact
+geocoding: true                     # look up venue / WRC stage-start coordinates (cached forever)
+stale_max_days: 14                  # a failing collector keeps serving its last good data this long
+# seasons: [2026, 2027]             # default: this year, plus next year from October onwards
+
+output:
+  filename: motorsport.ics
+  calendar_name: Motorsport
+  description: WEC, WRC, GT World Challenge, GT Open, 24H Series, drift and Monza events
+  display_timezone: Europe/Rome
+  color: "#D7263D"                  # initial colour in Apple Calendar
+  refresh_minutes: 60               # hint only; Apple uses the interval you choose when subscribing
+  keep_past_days: 45                # past events kept in the feed
+  alarm_minutes: 0                  # e.g. 15 = reminder before every qualifying and race
+
+schedule:
+  interval_minutes: 180             # normal cadence
+  race_weekend_interval_minutes: 30 # used when a session starts within the window below
+  race_weekend_window_hours: 72
+
+# -----------------------------------------------------------------------------
+# Championships. `type` picks the data source:
+#   motocal  any championship of the motorsport-calendar library - just set `provider`
+#            (list them: docker compose run --rm generator providers)
+#   wrc      World Rally Championship, one event per special stage
+#   jsonld   schema.org events from a web page
+#   manual   hand-written sessions in manual.yaml
+# Labels (series tag, championship, race type) come from built-in defaults; any key
+# can be overridden. GT/circuit series keep only FP, QUALI and RACE (`session_types`).
+# -----------------------------------------------------------------------------
+collectors:
+  wec:   {type: motocal, provider: wec}
+  gtwce: {type: motocal, provider: gtwc-europe}
+  wrc:
+    type: wrc
+    stage_window_minutes: 90        # first car -> roughly the last priority car
+    include_shakedown: true
+    # events: [{id: 1234, name: Rally Japan, country: Japan}]  # pin rallies if the season endpoint moves
+    # rally_timezones: {"Rally Name": "Area/City"}            # extra/overriding entries
+  manual:
+    type: manual
+    file: /config/manual.yaml       # GT Open, 24H Series, Drift Masters, Formula Drift, fixes
+
+  # ---- more championships: set `enabled: true` to add them --------------------
+  gtwca:  {type: motocal, provider: gtwc-america, enabled: false}
+  gtwcas: {type: motocal, provider: gtwc-asia,    enabled: false}
+  igtc:   {type: motocal, provider: igtc,         enabled: false}
+  elms:   {type: motocal, provider: elms,         enabled: false}
+  motogp: {type: motocal, provider: motogp,       enabled: false}
+  moto2:  {type: motocal, provider: moto2,        enabled: false}
+  moto3:  {type: motocal, provider: moto3,        enabled: false}
+  f1:     {type: motocal, provider: formula1,     enabled: false}
+  # Example of overriding labels / session filter:
+  # motogp: {type: motocal, provider: motogp, series: MGP, session_types: [QUALI, RACE]}
+
+# -----------------------------------------------------------------------------
+# Tracked circuits. Anything from any series held at a tracked circuit gets the
+# circuit's label (e.g. "Monza") and its exact coordinates. Adding a `calendar:`
+# block also scrapes the circuit's own event list (schema.org JSON-LD) so events
+# from championships you don't follow show up too.
+#   match: words looked for in the event location / name (default: the key)
+# -----------------------------------------------------------------------------
+tracked_circuits:
+  monza:
+    label: Monza
+    name: Autodromo Nazionale Monza
+    match: [monza]
+    tz: Europe/Rome
+    geo: [45.6156, 9.2811]
+    location: Autodromo Nazionale Monza, Viale di Vedano 5, Monza, Italy
+    calendar:
+      urls: [https://www.monzanet.it/en/calendar/]    # verify the listing URL on first run
+      follow_links_regex: "monzanet\\.it/(en/)?(event|events|evento)/"
+      max_pages: 40
+      series: MONZA                 # tag for events not recognised by series_map
+      series_map:                   # event name regex -> series tag
+        "WEC|World Endurance": WEC
+        "GT World Challenge|Fanatec|GTWC": GTWCE
+        "GT Open": GTOPEN
+        "24H|Creventic": 24H
+        "ELMS|European Le Mans": ELMS
+        "Formula 1|Gran Premio d'Italia": F1
+
+  # Label-only tracking (no scraping) is one block:
+  # imola:   {label: Imola,   match: [imola, enzo e dino ferrari], geo: [44.3439, 11.7167]}
+  # mugello: {label: Mugello, match: [mugello], geo: [43.9975, 11.3719]}
+  # misano:  {label: Misano,  match: [misano], geo: [43.9614, 12.6833]}
+  # spa:     {label: Spa, match: [spa-francorchamps, spa francorchamps], tz: Europe/Brussels, geo: [50.4372, 5.9714]}
+
+# -----------------------------------------------------------------------------
+# Streaming links, per series tag. Rules are tried in order; the first that yields
+# a link wins. `youtube:` finds the exact live video (needs YOUTUBE_API_KEY, falls
+# through otherwise); `url:` is a fixed link. Optional `match:` filters by
+# session_types / name_regex / event_regex. See docs/streaming.md.
+# -----------------------------------------------------------------------------
+streaming:
+  youtube:
+    lookahead_days: 7
+    match_before_minutes: 75        # streams often start before the session
+    match_after_minutes: 120
+  series:
+    WEC:
+      - match: {name_regex: "^(FP ?1|FP ?2|Free Practice 1|Free Practice 2)"}
+        url: https://www.fiawec.com   # paste your FIAWEC+ link here
+        label: FIAWEC+ (live timing; video from FP3)
+      - url: https://www.fiawec.com   # paste your FIAWEC+ link here
+        label: FIAWEC+
+    WRC:
+      - url: https://rally.tv
+        label: Rally.TV
+    GTWCE:
+      - youtube: "@GTWorld"         # verify the handle
+        label: GT World (YouTube)
+      - url: https://www.youtube.com/@GTWorld/streams
+        label: GT World (YouTube)
+    GTOPEN:
+      - youtube: "@gtopen"          # verify the handle
+        label: GT Open (YouTube)
+      - url: https://www.youtube.com/@gtopen/streams
+        label: GT Open (YouTube)
+    24H:
+      - youtube: "@24hseries"       # verify the handle
+        label: 24H Series (YouTube)
+      - url: https://www.youtube.com/@24hseries/streams
+        label: 24H Series (YouTube)
+    DM:
+      - youtube: "@driftmasters"    # verify the handle
+        label: Drift Masters (YouTube)
+      - url: https://www.youtube.com/@driftmasters/streams
+        label: Drift Masters (YouTube)
+    FD:
+      - youtube: "@formulad"        # verify the handle
+        label: Formula Drift (YouTube)
+      - url: https://www.youtube.com/@formulad/streams
+        label: Formula Drift (YouTube)
+    # GTWCA / GTWCAS / IGTC share the GT World channel:
+    # GTWCA: [{youtube: "@GTWorld", label: GT World (YouTube)}]
+    # MotoGP: [{url: "<your broadcaster or VideoPass link>", label: MotoGP}]

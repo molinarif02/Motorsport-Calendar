@@ -1,0 +1,4 @@
+motorsport-calendar==0.3.0   # MIT; WEC + GT World Challenge scrapers
+icalendar>=6.1,<8
+httpx>=0.27
+PyYAML>=6

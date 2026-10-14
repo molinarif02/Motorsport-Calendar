@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Runs the REAL scrapers against the live websites (weekly and on demand) and uploads
+# the generated calendar + status as artifacts. Fails when a core collector is broken,
+# so website/API changes are noticed before they matter.
+name: Live check
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["mscal/**", "config/**", "requirements.txt"]
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    env:
+      YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # optional repo secret
+      CORE: wec gtwce wrc                               # these must succeed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run once against the live sources
+        run: |
+          sed 's#/config/manual.yaml#config/manual.yaml#' config/config.yaml > ci-config.yaml
+          python -m mscal validate --config ci-config.yaml
+          python -m mscal run --config ci-config.yaml --data ./data --out ./www
+      - name: Summary
+        if: always()
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          s = json.load(open("www/status.json"))
+          print(f"### {s['events']} events\n\n| collector | ok | sessions | errors |\n|---|---|---|---|")
+          for n, c in s["collectors"].items():
+              print(f"| {n} | {'✅' if c['ok'] else '❌'} | {c['sessions']} | {'; '.join(c['errors'])[:300]} |")
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-calendar
+          path: www/
+      - name: Fail if a core collector is broken
+        run: |
+          python - <<'EOF'
+          import json, os, sys
+          s = json.load(open("www/status.json"))["collectors"]
+          bad = [n for n in os.environ["CORE"].split() if not s.get(n, {}).get("ok")]
+          sys.exit(f"broken core collectors: {bad}" if bad else 0)
+          EOF

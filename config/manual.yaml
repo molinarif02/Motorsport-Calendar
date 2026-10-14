@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Hand-maintained events for series without a reliable machine-readable schedule.
+# Types: FP, QUALI, RACE, STAGE, SHAKEDOWN, OTHER.  Times are LOCAL to `tz`.
+# Use `dates:` alone for an all-day placeholder until the timetable is out;
+# it is hidden automatically once timed sessions of the same series exist on those days.
+#
+# Example entries below are TEMPLATES, not real timetables - replace them.
+
+events:
+  - series: GTOPEN
+    championship: International GT Open
+    discipline: GT
+    event: "EXAMPLE – Monza"
+    tz: Europe/Rome
+    location: Autodromo Nazionale Monza, Italy
+    geo: [45.6156, 9.2811]
+    sessions:
+      - {type: FP,    name: FP1,    start: "2026-01-01 10:00", minutes: 60}
+      - {type: QUALI, name: Q1,     start: "2026-01-02 09:00", minutes: 30}
+      - {type: RACE,  name: Race 1, start: "2026-01-02 15:00", minutes: 70}
+
+  - series: DM
+    championship: Drift Masters
+    discipline: Drift
+    event: "EXAMPLE – Round"
+    tz: Europe/Warsaw
+    location: Example venue
+    dates: ["2026-01-03", "2026-01-04"]
