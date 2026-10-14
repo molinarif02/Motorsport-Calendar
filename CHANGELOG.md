@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 – 2026-10-14
+
+- Drift Masters streams: the battles (Top 32/16/8) link to Red Bull Motorsports on
+  YouTube (`@redbullmotorsports`) instead of Red Bull TV. Qualifying stays on the
+  Drift Masters channel. The collector only takes exact YouTube videos from dm.gp;
+  everything else goes through the `DM` streaming rules.
+
 ## 1.2.0 – 2026-10-14
 
 Lower resource use on the Raspberry Pi.

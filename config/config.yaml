@@ -164,10 +164,19 @@ streaming:
       - match: {session_types: [QUALI, RACE]}
         url: https://www.youtube.com/IMSAOfficial/streams
         label: IMSA (YouTube)
-    DM:                             # the collector sets exact links from dm.gp; this is the fallback
+    DM:                             # qualifying: Drift Masters channel; battles: Red Bull Motorsports
+      - match: {session_types: [QUALI]}
+        youtube: "@DriftMastersGrandPrix"
+        label: Drift Masters (YouTube)
       - match: {session_types: [QUALI]}
         url: https://www.youtube.com/@DriftMastersGrandPrix/streams
         label: Drift Masters (YouTube)
+      - match: {session_types: [RACE]}
+        youtube: "@redbullmotorsports"
+        label: Red Bull Motorsports (YouTube)
+      - match: {session_types: [RACE]}
+        url: https://www.youtube.com/@redbullmotorsports/streams
+        label: Red Bull Motorsports (YouTube)
     FD:                             # the collector sets formulad.com/live from the schedule; fallback
       - match: {session_types: [QUALI, RACE]}
         url: https://www.formulad.com/live

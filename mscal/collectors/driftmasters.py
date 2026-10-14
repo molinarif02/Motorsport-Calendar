@@ -17,8 +17,10 @@ wrapped as ``[0, value]`` (or ``[1, [...]]`` for arrays).
   ``roundTimetablesBlock`` has days ``{date, lines: [{time, bodyHTML}]}``. Line times
   carry a dummy date (1753-01-01) and read as local track time (gates 15:00,
   qualifying 17:30, gates closed 23:00 in Warsaw), despite their "Z" suffix.
-  ``…/live`` returns the stream links per day (YouTube for qualifying, Red Bull TV
-  for the battles) and the channel links.
+  ``…/live`` returns the stream links per day and the channel links.
+* Streams: qualifying is on the Drift Masters YouTube channel, the battles on Red
+  Bull Motorsports' YouTube channel. Exact YouTube videos listed by ``/live`` are
+  used directly; everything else falls to the ``DM`` streaming rules in config.yaml.
 * Sessions: "Qualification …" lines are qualifying; "TOP 32/16/8 … Battles" lines
   are the competition (labelled Race). A session ends at the next timetable line.
   Shows, gates and podium lines are skipped. Rounds without a timetable become an
@@ -217,19 +219,18 @@ def build_sessions(days, tz: ZoneInfo) -> list[tuple]:
 
 
 def stream_for(live: dict, kind: SessionType, name: str, day: int) -> tuple[str | None, str | None]:
-    """Exact per-day stream from /live, else the channel for that kind of session."""
+    """Exact YouTube video for a session from dm.gp's /live data, else (None, None).
+
+    Only YouTube links are taken from the site: qualifying is streamed on the Drift
+    Masters channel and the battles on Red Bull Motorsports' channel, and those are
+    configured as streaming rules (series ``DM`` in config.yaml), which apply whenever
+    this returns nothing - e.g. when the site lists a Red Bull TV embed instead.
+    """
     for s in live.get(f"embedLiveStreamLinksDay{day}") or []:
         title = (s.get("title") or "").lower()
         if (kind == SessionType.QUALI and "qualif" in title) or (title and title in name.lower()):
-            link = s.get("link", "")
-            m = re.search(r"youtube\.com/embed/([\w-]+)", link)
+            m = re.search(r"youtube\.com/embed/([\w-]+)", s.get("link", ""))
             if m:
-                return f"https://www.youtube.com/watch?v={m.group(1)}", "Drift Masters (YouTube)"
-            return link, "Red Bull TV" if "redbull" in link else "Live stream"
-    for ch in live.get("videoChannelLinks") or []:
-        segs = " ".join(ch.get("segments") or []).lower()
-        if ch.get("type") == "YoutubeStream" and kind == SessionType.QUALI:
-            return ch["link"], "Drift Masters (YouTube)"
-        if ch.get("type") == "RedbullStream" and kind == SessionType.RACE and "qualifying only" not in segs:
-            return ch["link"], "Red Bull TV"
+                label = "Drift Masters (YouTube)" if kind == SessionType.QUALI else "YouTube live"
+                return f"https://www.youtube.com/watch?v={m.group(1)}", label
     return None, None

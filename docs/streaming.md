@@ -39,7 +39,7 @@ overridden.
 | 24H Series | qualifying and race: YouTube (`user:24HSeries`, linked from 24hseries.com); practice: live timing |
 | IMSA | qualifying and race: `@IMSAOfficial` (linked from imsa.com; international stream per its broadcast schedule) |
 | GT Open | qualifying and race: `@GTOPENseries` (linked from gtopen.gtsport.es); practice: live timing |
-| Drift Masters | set by the collector from dm.gp: the exact YouTube video for qualifying, Red Bull TV for the battles |
+| Drift Masters | qualifying: Drift Masters channel (`@DriftMastersGrandPrix`, exact video from dm.gp when listed); battles: Red Bull Motorsports (`@redbullmotorsports`) |
 | Formula DRIFT | set by the collector from the round schedule: formulad.com/live |
 | GTWCE | the exact video on GT World's YouTube (the site links youtube.com/gtworld), otherwise the official Watch Live page |
 

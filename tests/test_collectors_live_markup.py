@@ -133,9 +133,10 @@ def test_driftmasters_round_with_timetable(tmp_path):
     assert top32.session_type == SessionType.RACE
     assert (top32.start.isoformat(), top32.end.strftime("%H:%M")) == ("2026-09-12T15:00:00+02:00", "17:15")
     # exact streams from the site's /live endpoint
-    assert q1.stream_url == "https://www.youtube.com/watch?v=vPhV55wK1JA"
-    assert top32.stream_url.startswith("https://www.redbull.com/embed/") and top32.stream_label == "Red Bull TV"
-    assert r7["TOP 8 Battles"].stream_label == "Red Bull TV"   # no embed -> channel fallback
+    assert q1.stream_url == "https://www.youtube.com/watch?v=vPhV55wK1JA"   # exact video from dm.gp
+    # battles: the site lists Red Bull TV embeds; those are ignored so the DM
+    # streaming rules (Red Bull Motorsports on YouTube) apply instead
+    assert top32.stream_url is None and r7["TOP 8 Battles"].stream_url is None
     assert "PGE Narodowy, Poland" == q1.location
 
 
@@ -309,3 +310,23 @@ def test_gtopen_real_pdf_roundtrip():
                              "Qualifying 1", "Qualifying 2", "Race 1", "Race 2"}
     assert sessions["Race 1"][0].strftime("%d %H:%M") == "24 15:10"
     assert sessions["Race 2"][0].strftime("%d %H:%M") == "25 13:30"
+
+
+def test_driftmasters_battles_use_red_bull_motorsports_rule(tmp_path):
+    """Through the real stream resolver with the shipped config (no API key)."""
+    import yaml
+
+    from mscal.collectors.driftmasters import DriftMastersCollector
+    from mscal.streams import StreamResolver
+
+    cfg = yaml.safe_load(Path("config/config.yaml").read_text())
+    c = _make(DriftMastersCollector, DM, tmp_path)
+    out = c.collect(2026)
+    StreamResolver(cfg["streaming"], c.http, c.state, None).apply(out, cfg["streaming"]["series"])
+    r7 = {s.name: s for s in out if s.event_name == "Round 7 – Warsaw"}
+    assert r7["TOP 32 Drift Masters Battles"].stream_url == "https://www.youtube.com/@redbullmotorsports/streams"
+    assert r7["TOP 32 Drift Masters Battles"].stream_label == "Red Bull Motorsports (YouTube)"
+    assert r7["Qualification Round 7 – 1st Session"].stream_url == "https://www.youtube.com/watch?v=vPhV55wK1JA"
+    # one "Qualifying" stream per day on dm.gp covers both qualifying sessions
+    assert r7["Qualification Round 7 – 2nd Session"].stream_url == "https://www.youtube.com/watch?v=vPhV55wK1JA"
+    assert r7["TOP 8 Battles"].stream_label == "Red Bull Motorsports (YouTube)"
