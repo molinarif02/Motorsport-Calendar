@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # optional repo secret
-      CORE: wec gtwce wrc                               # these must succeed
+      CORE: wec gtwce wrc 24h imsa                              # these must succeed
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -19,7 +19,7 @@ docker compose run --rm generator providers    # championships available to `mot
 | `log_level` | `info` | `debug`, `info`, `warn`, `error` or `crit` (case-insensitive). Applied on the next run, no restart needed. If unset, the `LOG_LEVEL` environment variable is used. HTTP request lines appear only at `debug`. |
 | `contact` | `admin@example.com` | sent in the User-Agent. OpenStreetMap requires a contact; use a real address. |
 | `geocoding` | `true` | look up coordinates of venues and WRC stage starts. Results are cached forever. |
-| `stale_max_days` | `14` | how long a failing collector may serve its last good data |
+| `stale_max_days` | `14` | how long a failing collector may serve its last good data. `0` means no age limit: each season's cached sessions stay until that season is over (its last session has ended). |
 | `seasons` | auto | e.g. `[2026, 2027]`. By default it is the current year, plus next year from October. |
 
 ## `output`
@@ -51,7 +51,7 @@ block accepts these common keys:
 
 | key | |
 |---|---|
-| `type` | `motocal`, `wrc`, `jsonld` or `manual` |
+| `type` | `motocal`, `wrc`, `creventic`, `imsa`, `jsonld` or `manual` |
 | `enabled` | `false` to switch it off without deleting it |
 | `series` | short tag used in titles: `[WEC]` |
 | `championship` | full name, used as a label |
@@ -90,6 +90,25 @@ collectors:
 | `stage_window_minutes` | `90` | event length (the API has no stage end time) |
 | `include_shakedown` | `true` | |
 | `rally_timezones` | built-in table | extra or overriding `fragment: Area/City` entries, matched on event id, then rally name, then country |
+
+### `type: creventic` (24H Series)
+
+| key | default | |
+|---|---|---|
+| `base_url` | `https://www.24hseries.com` | |
+| `merge_qualifying` | `true` | merge per-class qualifying slots into one event |
+| `qualifying_gap_minutes` | `30` | maximum gap between slots that get merged |
+| `session_types` | `[FP, QUALI, RACE]` | |
+
+### `type: imsa`
+
+| key | default | |
+|---|---|---|
+| `season_index_url` | 2026 WeatherTech schedule page | any season page; its season selector gives the other years |
+| `season_urls` | none | `{2027: https://...}` to pin a season page |
+| `series_regex` | `WeatherTech` | which series' practice/qualifying rows to keep |
+| `venue_timezones` | built-in by US state / province | `{"Venue": "Area/City"}` overrides |
+| `session_types` | `[FP, QUALI, RACE]` | |
 
 ### `type: jsonld`
 

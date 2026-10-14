@@ -7,6 +7,8 @@ A collector turns one data source into `Session` objects (see
 |---|---|---|---|
 | `motocal` | `mscal/collectors/motocal.py` | [motorsport-calendar](https://github.com/naviss29/motorsport-calendar) library: fiawec.com and ACO sites (JSON-LD), SRO timetables (HTML), Dorna Pulselive API, OpenF1/Jolpica, f1calendar dataset | maintained upstream; update the pinned version to pick up fixes |
 | `wrc` | `mscal/collectors/wrc.py` | WRC live-timing JSON (`api.wrc.com`) | undocumented API, may move between seasons |
+| `creventic` | `mscal/collectors/creventic.py` | 24hseries.com race listing + per-race timetables (HTML) | site markup, checked 2026-10 |
+| `imsa` | `mscal/collectors/imsa.py` | imsa.com season pages + event schedules (HTML) | site markup, checked 2026-10 |
 | `jsonld` | `mscal/collectors/jsonld.py` | schema.org events embedded in web pages | depends on each site's markup |
 | `manual` | `mscal/collectors/manual.py` | `config/manual.yaml` | exactly as good as what you type |
 
@@ -15,7 +17,8 @@ A collector turns one data source into `Session` objects (see
 `collect()` raises when something is wrong, and an empty result also counts as a
 failure. The runner then:
 
-- keeps the collector's **last good output** (up to `stale_max_days`) in the feed;
+- keeps the collector's **last good output** in the feed, for up to `stale_max_days`
+  (or, with `0`, until each cached season is over);
 - reports the failure in `/www/status.json`:
 
 ```json
@@ -52,6 +55,32 @@ A scraper that breaks therefore never silently empties the calendar. Monitor
   geocoded with the country.
 - If the season endpoint changes, set `events: [{id, name, country}]`. Event ids
   appear in the URLs of wrc.com's results pages.
+
+### creventic (24H Series)
+
+- The race listing at `/races` gives each round's dates and venue. Each race page
+  has a "Time Schedule" with track times and the IANA zone.
+- The race is the `Start <race>` row, ending at the next `Finish` row. Races split
+  into parts (some 12H events) become one event per part.
+- Qualifying is run per class in 12-minute slots. With `merge_qualifying: true`
+  (the default), consecutive slots become one "Qualifying (all classes)" event.
+- Track days, the grid walk, parade and podium are not sessions and are dropped.
+- Races whose timetable isn't published yet appear as an all-day `[Event]` over the
+  weekend. It is replaced automatically when the timetable appears.
+
+### imsa (WeatherTech)
+
+- Season page URLs differ between years, so they are read from the season
+  selector. Pin one with `season_urls: {2027: https://...}` if needed.
+- Event pages list every IMSA series. `series_regex` (default `WeatherTech`) picks
+  practice and qualifying. The race row carries only the race name, so it is
+  matched by name or by the duration from the season card.
+- The site lists all times in ET. They are converted to the venue's zone, derived
+  from its state or province. Use `venue_timezones: {"Venue name": "Area/City"}`
+  for venues outside the built-in table.
+- Races that cross midnight (Rolex 24) are listed as two rows and are merged.
+- If an event page is missing, the round becomes an all-day placeholder from the
+  season card.
 
 ### jsonld
 

@@ -93,8 +93,10 @@ class StreamResolver:
         cached = self.state.kv_get("yt_channel", handle)
         if cached:
             return cached
-        r = self.http.get(f"{YT_API}/channels", params={
-            "part": "id", "forHandle": handle, "key": self.api_key})
+        # "@handle" (modern) or "user:Name" (legacy youtube.com/user/Name URLs)
+        lookup = ({"forUsername": handle[5:]} if handle.startswith("user:")
+                  else {"forHandle": handle})
+        r = self.http.get(f"{YT_API}/channels", params={"part": "id", "key": self.api_key, **lookup})
         r.raise_for_status()
         cid = r.json()["items"][0]["id"]
         self.state.kv_set("yt_channel", handle, cid)

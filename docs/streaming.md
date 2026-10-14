@@ -25,7 +25,7 @@ streaming:
 | `match.name_regex` | regex on the session name (`FP1`, `Hyperpole`, …) |
 | `match.event_regex` | regex on the event name (`Le Mans`, …) |
 | `url` + `label` | fixed link |
-| `youtube` + `label` | channel handle (`@name`) or channel id (`UC…`) to search for the live video |
+| `youtube` + `label` | channel handle (`@name`), legacy username (`user:Name`), or channel id (`UC…`) to search for the live video |
 
 A link set by a collector itself (for example `stream_url` in `manual.yaml`) is never
 overridden.
@@ -36,7 +36,9 @@ overridden.
 |---|---|
 | WEC | FIAWEC+. FP1/FP2 are labelled "live timing; video from FP3", because the platform streams video from FP3 onward. Paste your FIAWEC+ link into the two `url:` entries. |
 | WRC | Rally.TV |
-| GTWCE, GT Open, 24H Series, Drift Masters, Formula Drift | the series' YouTube channel. **Verify the handles**; they were not checked against live YouTube. |
+| 24H Series | qualifying and race: YouTube (`user:24HSeries`, the channel linked from 24hseries.com); practice: live timing |
+| IMSA | qualifying and race: IMSA's YouTube channel (international stream per imsa.com's broadcast schedule). **Verify the `@IMSA` handle.** |
+| GTWCE, GT Open, Drift Masters, Formula Drift | the series' YouTube channel. **Verify the handles**; they were not checked against live YouTube. |
 
 ## How YouTube matching works
 

@@ -85,3 +85,38 @@ def test_log_level_from_config():
         httpx_level = logging.getLogger("httpx").level
         assert httpx_level == (logging.DEBUG if expected == logging.DEBUG else max(expected, logging.WARNING))
     assert any("log_level" in e for e in M.validate({**_cfg(), "log_level": "verbose"}))
+
+
+def test_stale_zero_keeps_cache_until_season_end(tmp_path):
+    from mscal.state import State
+
+    now = datetime.now(UTC)
+    tz = "Europe/Rome"
+
+    def sess(season, days, name):
+        start = (now + timedelta(days=days)).astimezone(ZoneInfo(tz))
+        return Session(series="WEC", championship="FIA WEC", discipline="Endurance", season=season,
+                       event_name="X", session_type=SessionType.RACE, name=name,
+                       start=start, end=start + timedelta(hours=2), tz=tz)
+
+    state = State(tmp_path)
+    # season A: finished (last session in the past); season B: one past + one future session
+    state.save_collector("wec", [sess(2025, -300, "old"), sess(2026, -10, "past"), sess(2026, 20, "future")])
+    # pretend the copy is a year old: a positive limit drops it, 0 does not
+    import json
+
+    p = tmp_path / "collectors" / "wec.json"
+    payload = json.loads(p.read_text())
+    payload["saved"] = (now - timedelta(days=365)).isoformat()
+    p.write_text(json.dumps(payload))
+    assert state.load_collector("wec", 14) is None
+    kept = state.load_collector("wec", 0)
+    assert sorted(s.name for s in kept) == ["future", "past"]   # finished season 2025 dropped
+
+    state.save_collector("wec", [sess(2025, -300, "old")])
+    assert state.load_collector("wec", 0) is None              # everything finished
+
+
+def test_validate_stale_max_days():
+    assert M.validate({**_cfg(), "stale_max_days": 0}) == []
+    assert any("stale_max_days" in e for e in M.validate({**_cfg(), "stale_max_days": -1}))

@@ -88,6 +88,18 @@ class Collector(ABC):
         return self.cfg.get("discipline", "")
 
 
+def unique_names(sessions: list[tuple]) -> list[tuple]:
+    """Make the name (index 1) of ``(type, name, start, end)`` tuples unique in order of
+    appearance: a second "Qualifying" becomes "Qualifying 2". Names feed the session
+    key, and therefore the UID, so duplicates would collapse into one event."""
+    seen: dict[str, int] = {}
+    out = []
+    for t, name, start, end in sessions:
+        seen[name] = seen.get(name, 0) + 1
+        out.append((t, name if seen[name] == 1 else f"{name} {seen[name]}", start, end))
+    return out
+
+
 class Geocoder:
     """Place name -> (lat, lon) via OpenStreetMap Nominatim.
 

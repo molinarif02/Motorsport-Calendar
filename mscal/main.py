@@ -251,6 +251,9 @@ def validate(cfg: dict) -> list[str]:
     errors: list[str] = []
     if cfg.get("log_level") and str(cfg["log_level"]).lower() not in LOG_LEVELS:
         errors.append(f"log_level: '{cfg['log_level']}' is not one of {', '.join(LOG_LEVELS)}")
+    stale = cfg.get("stale_max_days", 14)
+    if not isinstance(stale, int) or isinstance(stale, bool) or stale < 0:
+        errors.append(f"stale_max_days: must be a whole number >= 0 (0 = keep until season end), got {stale!r}")
     try:
         specs = collector_specs(cfg)
     except ValueError as e:

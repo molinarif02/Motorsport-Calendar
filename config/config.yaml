@@ -9,13 +9,14 @@
 log_level: info                     # debug | info | warn | error | crit  (applied on the next run)
 contact: you@example.com            # goes in the User-Agent; OpenStreetMap's policy requires a contact
 geocoding: true                     # look up venue / WRC stage-start coordinates (cached forever)
-stale_max_days: 14                  # a failing collector keeps serving its last good data this long
+stale_max_days: 14                  # a failing collector keeps serving its last good data this long;
+                                    # 0 = no age limit, drop each season's data only when that season is over
 # seasons: [2026, 2027]             # default: this year, plus next year from October onwards
 
 output:
   filename: motorsport.ics
   calendar_name: Motorsport
-  description: WEC, WRC, GT World Challenge, GT Open, 24H Series, drift and Monza events
+  description: WEC, IMSA, WRC, GT World Challenge, 24H Series, GT Open, drift and Monza events
   display_timezone: Europe/Rome
   color: "#D7263D"                  # initial colour in Apple Calendar
   refresh_minutes: 60               # hint only; Apple uses the interval you choose when subscribing
@@ -46,9 +47,15 @@ collectors:
     include_shakedown: true
     # events: [{id: 1234, name: Rally Japan, country: Japan}]  # pin rallies if the season endpoint moves
     # rally_timezones: {"Rally Name": "Area/City"}            # extra/overriding entries
+  24h:
+    type: creventic                 # Michelin 24H Series, from 24hseries.com
+    merge_qualifying: true          # one "Qualifying (all classes)" instead of 9 class slots
+  imsa:
+    type: imsa                      # IMSA WeatherTech SportsCar Championship, from imsa.com
+    # series_regex: "WeatherTech"   # which IMSA series' practice/qualifying rows to keep
   manual:
     type: manual
-    file: /config/manual.yaml       # GT Open, 24H Series, Drift Masters, Formula Drift, fixes
+    file: /config/manual.yaml       # series without a collector yet, and one-off fixes
 
   # ---- more championships: set `enabled: true` to add them --------------------
   gtwca:  {type: motocal, provider: gtwc-america, enabled: false}
@@ -127,11 +134,22 @@ streaming:
         label: GT Open (YouTube)
       - url: https://www.youtube.com/@gtopen/streams
         label: GT Open (YouTube)
-    24H:
-      - youtube: "@24hseries"       # verify the handle
+    24H:                            # the site marks qualifying and race as streamed on YouTube
+      - match: {session_types: [QUALI, RACE]}
+        youtube: "user:24HSeries"   # channel linked from 24hseries.com
         label: 24H Series (YouTube)
-      - url: https://www.youtube.com/@24hseries/streams
+      - match: {session_types: [QUALI, RACE]}
+        url: https://www.youtube.com/user/24HSeries/streams
         label: 24H Series (YouTube)
+      - url: https://livetiming.getraceresults.com/24hseries
+        label: 24H Series live timing
+    IMSA:                           # outside the US, imsa.com lists qualifying + race on IMSA's YouTube and IMSA.TV
+      - match: {session_types: [QUALI, RACE]}
+        youtube: "@IMSA"            # verify the handle
+        label: IMSA (YouTube)
+      - match: {session_types: [QUALI, RACE]}
+        url: https://www.youtube.com/@IMSA/streams
+        label: IMSA (YouTube)
     DM:
       - youtube: "@driftmasters"    # verify the handle
         label: Drift Masters (YouTube)

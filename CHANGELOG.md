@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0 – 2026-10-14
+
+- New collector `creventic`: Michelin 24H Series from 24hseries.com, with per-race
+  timetables, Start/Finish pairing for races (including split races), merged
+  per-class qualifying, and weekend placeholders until timetables are published.
+- New collector `imsa`: IMSA WeatherTech SportsCar Championship from imsa.com, with
+  the season selector, ET→venue timezone conversion, races matched by name or
+  duration, and the midnight split of the Rolex 24 merged.
+- `stale_max_days: 0` keeps a failing collector's data until each season is over.
+- `log_level` in config.yaml.
+- Streaming rules accept legacy YouTube usernames (`user:Name`).
+- Tests against pages captured from the live sites.
+
 ## 1.0.0 – 2026-10-14
 
 First release.

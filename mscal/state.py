@@ -37,6 +37,13 @@ def atomic_write(path: Path, data: str | bytes) -> None:
         raise
 
 
+def _end_utc(s: Session) -> datetime:
+    """Session end as an aware UTC datetime (all-day ends are exclusive dates)."""
+    if isinstance(s.end, datetime):
+        return s.end.astimezone(UTC)
+    return datetime.combine(s.end, datetime.min.time(), UTC)
+
+
 class State:
     def __init__(self, data_dir: Path):
         self.dir = data_dir
@@ -77,16 +84,36 @@ class State:
         atomic_write(self.dir / "collectors" / f"{name}.json", json.dumps(payload))
 
     def load_collector(self, name: str, max_age_days: int) -> list[Session] | None:
+        """Last good output of a collector, used when it fails.
+
+        ``max_age_days > 0``: the whole copy is dropped once it is older than that.
+        ``max_age_days == 0``: no age limit; instead each season's sessions are kept
+        until that season is over (its last session has ended), so a scraper that
+        breaks mid-season keeps the rest of that season in the calendar.
+        """
         p = self.dir / "collectors" / f"{name}.json"
         try:
             payload = json.loads(p.read_text())
         except FileNotFoundError:
             return None
-        age = datetime.now(UTC) - datetime.fromisoformat(payload["saved"])
-        if age > timedelta(days=max_age_days):
-            log.warning("cached output for %s is %s old, dropping it", name, age)
-            return None
-        return [Session.from_dict(d) for d in payload["sessions"]]
+        sessions = [Session.from_dict(d) for d in payload["sessions"]]
+        if max_age_days > 0:
+            age = datetime.now(UTC) - datetime.fromisoformat(payload["saved"])
+            if age > timedelta(days=max_age_days):
+                log.warning("cached output for %s is %s old, dropping it", name, age)
+                return None
+            return sessions
+        # 0 = keep until the end of each season
+        now = datetime.now(UTC)
+        season_end: dict[int, datetime] = {}
+        for s in sessions:
+            end = _end_utc(s)
+            season_end[s.season] = max(season_end.get(s.season, end), end)
+        over = {season for season, end in season_end.items() if end < now}
+        if over:
+            log.info("cached output for %s: dropping finished season(s) %s", name, sorted(over))
+        kept = [s for s in sessions if s.season not in over]
+        return kept or None
 
     # ---- small TTL key/value cache (geocoding, YouTube lookups) --------------
     def kv_get(self, ns: str, key: str, ttl: timedelta | None = None):

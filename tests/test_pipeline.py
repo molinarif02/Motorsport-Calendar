@@ -89,6 +89,8 @@ class FakeMotocal(motocal_mod.MotocalCollector):
 def env(tmp_path, monkeypatch):
     cfg = yaml.safe_load(Path("config/config.yaml").read_text())
     cfg["seasons"] = [YEAR]
+    for name in ("24h", "imsa"):  # covered by test_collectors_live_markup.py
+        cfg["collectors"][name]["enabled"] = False
     cfg["collectors"]["manual"]["file"] = str(tmp_path / "manual.yaml")
     (tmp_path / "manual.yaml").write_text(yaml.safe_dump({"events": [{
         "series": "DM", "championship": "Drift Masters", "discipline": "Drift",
