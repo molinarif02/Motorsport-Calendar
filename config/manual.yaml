@@ -7,8 +7,8 @@
 # Example entries below are TEMPLATES, not real timetables - replace them.
 
 events:
-  - series: GTOPEN
-    championship: International GT Open
+  - series: EXAMPLE
+    championship: Example Championship
     discipline: GT
     event: "EXAMPLE – Monza"
     tz: Europe/Rome
@@ -19,8 +19,8 @@ events:
       - {type: QUALI, name: Q1,     start: "2026-01-02 09:00", minutes: 30}
       - {type: RACE,  name: Race 1, start: "2026-01-02 15:00", minutes: 70}
 
-  - series: DM
-    championship: Drift Masters
+  - series: EXAMPLE2
+    championship: Another Example Series
     discipline: Drift
     event: "EXAMPLE – Round"
     tz: Europe/Warsaw

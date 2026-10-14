@@ -9,6 +9,9 @@ A collector turns one data source into `Session` objects (see
 | `wrc` | `mscal/collectors/wrc.py` | WRC live-timing JSON (`api.wrc.com`) | undocumented API, may move between seasons |
 | `creventic` | `mscal/collectors/creventic.py` | 24hseries.com race listing + per-race timetables (HTML) | site markup, checked 2026-10 |
 | `imsa` | `mscal/collectors/imsa.py` | imsa.com season pages + event schedules (HTML) | site markup, checked 2026-10 |
+| `driftmasters` | `mscal/collectors/driftmasters.py` | dm.gp season page + the site's own JSON API (timetable, streams) | site markup/API, checked 2026-10 |
+| `formuladrift` | `mscal/collectors/formuladrift.py` | formulad.com schedule + round pages (HTML) | site markup, checked 2026-10 |
+| `gtopen` | `mscal/collectors/gtopen.py` | gtopen.gtsport.es calendar (Next.js payload) + next-race schedule PDF | PDF layout is the weak point |
 | `jsonld` | `mscal/collectors/jsonld.py` | schema.org events embedded in web pages | depends on each site's markup |
 | `manual` | `mscal/collectors/manual.py` | `config/manual.yaml` | exactly as good as what you type |
 
@@ -81,6 +84,39 @@ A scraper that breaks therefore never silently empties the calendar. Monitor
 - Races that cross midnight (Rolex 24) are listed as two rows and are merged.
 - If an event page is missing, the round becomes an all-day placeholder from the
   season card.
+
+### driftmasters
+
+- The season page lists rounds (dates, circuit, country). Each round page holds
+  the IDs the site's front end uses for its JSON API: `/event` gives the
+  timetable, and `/live` gives the stream links.
+- Timetable times are read as local track time. The API marks them "Z", but the
+  values only make sense locally (Warsaw qualifying at 17:30, gates closing 23:00).
+- "Qualification …" lines are qualifying, and "TOP 32/16/8 … Battles" lines are the
+  competition, labelled `Race`. A session ends at the next timetable line.
+- Stream links come from `/live`: the exact YouTube video for qualifying, and Red
+  Bull TV for the battles.
+
+### formuladrift
+
+- `/schedule` links the season's rounds. Round pages carry the schedule
+  (`dl` rows per day, local time) and the venue address, whose state gives the
+  timezone.
+- Practice rows are free practice. Qualifying and the Top 32 / Top 16 battles
+  appear as "LIVESTREAM: <link> (…)" rows; the link becomes the stream URL.
+
+### gtopen
+
+- The season comes from the calendar JSON embedded in `/calendario`.
+- Session times exist only in the PDF linked from the homepage's "next race" box,
+  which mixes every GT Sport series. The parser keeps rows labelled
+  `series_name` (default `International GT Open`). For race rows that carry the
+  series name on the neighbouring line, it looks at that line instead.
+- Parsed sessions are stored per round, so they stay in the calendar after the
+  weekend. Other rounds are Friday-to-race-day placeholders.
+- Rounds matching `skip_regex` (default: tests) are ignored.
+- If the PDF layout changes, the log says "had no International GT Open sessions",
+  and the round falls back to its placeholder.
 
 ### jsonld
 

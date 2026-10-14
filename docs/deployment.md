@@ -22,7 +22,7 @@ Volumes:
 git clone https://github.com/molinarif02/Motorsport-Calendar.git
 cd Motorsport-Calendar
 cp .env.example .env                                  # YOUTUBE_API_KEY, TUNNEL_TOKEN (both optional)
-$EDITOR config/config.yaml                            # at least: contact, FIAWEC+ link
+$EDITOR config/config.yaml                            # at least: contact
 docker compose pull generator || docker compose build generator
 docker compose run --rm generator validate
 ```

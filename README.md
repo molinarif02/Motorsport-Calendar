@@ -2,7 +2,7 @@
 
 One calendar, **Motorsport**, with every session of the championships you follow:
 WEC, IMSA, WRC (every special stage), GT World Challenge, the 24H Series, GT Open,
-drift series, and everything that happens at the circuits you track (Monza by default).
+Drift Masters, Formula DRIFT, and everything that happens at the circuits you track (Monza by default).
 Each session has its correct local time, the circuit or stage-start location, and a
 link to the live stream.
 
@@ -41,7 +41,7 @@ Docker Compose.
 ```bash
 git clone https://github.com/molinarif02/Motorsport-Calendar.git
 cd Motorsport-Calendar
-$EDITOR config/config.yaml                         # contact e-mail, FIAWEC+ link, championships
+$EDITOR config/config.yaml                         # contact e-mail, championships, circuits
 echo "YOUTUBE_API_KEY=" > .env                       # optional, see docs/streaming.md
 docker compose pull || docker compose build          # prebuilt image from GHCR, or build locally
 docker compose run --rm generator validate           # check the config offline
@@ -84,7 +84,8 @@ library supports. See [docs/configuration.md](docs/configuration.md) for all the
 - WEC, ELMS, GT World Challenge, IGTC, MotoGP, F1 and other championships come via
   [motorsport-calendar](https://github.com/naviss29/motorsport-calendar) by Alan
   Yvenou (MIT), used as a library.
-- The 24H Series and IMSA come from the public pages of 24hseries.com and imsa.com.
+- The 24H Series, IMSA, Drift Masters, Formula DRIFT and GT Open come from the public
+  pages of their official websites (GT Open's timetable from its schedule PDF).
 - WRC itineraries come from the public endpoints of the WRC live-timing service.
   These endpoints are undocumented and may change.
 - Coordinates come from [OpenStreetMap Nominatim](https://nominatim.org) (© OpenStreetMap

@@ -30,7 +30,7 @@ real pipeline runs against the fakes.
 | file | covers |
 |---|---|
 | `tests/test_pipeline.py` | full run: WRC stages and timezones, Monza JSON-LD, manual entries, YouTube matching, labels, stable UIDs and SEQUENCE bumps, byte-identical output, fallback to cached data |
-| `tests/test_collectors_live_markup.py` | 24H Series and IMSA collectors against pages captured from the live sites (`tests/fixtures/`) |
+| `tests/test_collectors_live_markup.py` | 24H Series, IMSA, Drift Masters, Formula DRIFT and GT Open collectors against pages, API responses and PDF text captured from the live sites (`tests/fixtures/`) |
 | `tests/test_config.py` | catalog defaults, enabling extra championships, overrides, tracked circuits, `validate` |
 
 ## Continuous integration (`.github/workflows/`)

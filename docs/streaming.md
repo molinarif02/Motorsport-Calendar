@@ -34,11 +34,14 @@ overridden.
 
 | series | link |
 |---|---|
-| WEC | FIAWEC+. FP1/FP2 are labelled "live timing; video from FP3", because the platform streams video from FP3 onward. Paste your FIAWEC+ link into the two `url:` entries. |
+| WEC | FIAWEC+ (`plus.fiawec.com`, linked from fiawec.com). FP1/FP2 are labelled "live timing; video from FP3", because the platform streams video from FP3 onward. |
 | WRC | Rally.TV |
-| 24H Series | qualifying and race: YouTube (`user:24HSeries`, the channel linked from 24hseries.com); practice: live timing |
-| IMSA | qualifying and race: IMSA's YouTube channel (international stream per imsa.com's broadcast schedule). **Verify the `@IMSA` handle.** |
-| GTWCE, GT Open, Drift Masters, Formula Drift | the series' YouTube channel. **Verify the handles**; they were not checked against live YouTube. |
+| 24H Series | qualifying and race: YouTube (`user:24HSeries`, linked from 24hseries.com); practice: live timing |
+| IMSA | qualifying and race: `@IMSAOfficial` (linked from imsa.com; international stream per its broadcast schedule) |
+| GT Open | qualifying and race: `@GTOPENseries` (linked from gtopen.gtsport.es); practice: live timing |
+| Drift Masters | set by the collector from dm.gp: the exact YouTube video for qualifying, Red Bull TV for the battles |
+| Formula DRIFT | set by the collector from the round schedule: formulad.com/live |
+| GTWCE | the exact video on GT World's YouTube (the site links youtube.com/gtworld), otherwise the official Watch Live page |
 
 ## How YouTube matching works
 

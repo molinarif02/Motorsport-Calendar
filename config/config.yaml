@@ -53,9 +53,16 @@ collectors:
   imsa:
     type: imsa                      # IMSA WeatherTech SportsCar Championship, from imsa.com
     # series_regex: "WeatherTech"   # which IMSA series' practice/qualifying rows to keep
+  dm:
+    type: driftmasters              # Drift Masters, from dm.gp (timetable + stream links per round)
+  fd:
+    type: formuladrift              # Formula DRIFT, from formulad.com
+  gtopen:
+    type: gtopen                    # International GT Open: calendar + next-race schedule PDF
+    # skip_regex: "\\btest\\b"        # rounds to ignore (default: tests)
   manual:
     type: manual
-    file: /config/manual.yaml       # series without a collector yet, and one-off fixes
+    file: /config/manual.yaml       # anything without a collector, and one-off fixes
 
   # ---- more championships: set `enabled: true` to add them --------------------
   gtwca:  {type: motocal, provider: gtwc-america, enabled: false}
@@ -117,23 +124,27 @@ streaming:
   series:
     WEC:
       - match: {name_regex: "^(FP ?1|FP ?2|Free Practice 1|Free Practice 2)"}
-        url: https://www.fiawec.com   # paste your FIAWEC+ link here
+        url: https://plus.fiawec.com/en   # FIAWEC+, linked from fiawec.com
         label: FIAWEC+ (live timing; video from FP3)
-      - url: https://www.fiawec.com   # paste your FIAWEC+ link here
+      - url: https://plus.fiawec.com/en
         label: FIAWEC+
     WRC:
       - url: https://rally.tv
         label: Rally.TV
-    GTWCE:
-      - youtube: "@GTWorld"         # verify the handle
+    GTWCE:                          # site links youtube.com/gtworld and its own Watch Live page
+      - youtube: "@GTWorld"
         label: GT World (YouTube)
-      - url: https://www.youtube.com/@GTWorld/streams
-        label: GT World (YouTube)
-    GTOPEN:
-      - youtube: "@gtopen"          # verify the handle
+      - url: https://www.gt-world-challenge-europe.com/watch-live
+        label: GT World Challenge Europe – Watch Live
+    GTOPEN:                         # links from gtopen.gtsport.es
+      - match: {session_types: [QUALI, RACE]}
+        youtube: "@GTOPENseries"
         label: GT Open (YouTube)
-      - url: https://www.youtube.com/@gtopen/streams
+      - match: {session_types: [QUALI, RACE]}
+        url: https://www.youtube.com/@GTOPENseries/streams
         label: GT Open (YouTube)
+      - url: https://gtsport.cronococa.com/
+        label: GT Open live timing
     24H:                            # the site marks qualifying and race as streamed on YouTube
       - match: {session_types: [QUALI, RACE]}
         youtube: "user:24HSeries"   # channel linked from 24hseries.com
@@ -143,23 +154,21 @@ streaming:
         label: 24H Series (YouTube)
       - url: https://livetiming.getraceresults.com/24hseries
         label: 24H Series live timing
-    IMSA:                           # outside the US, imsa.com lists qualifying + race on IMSA's YouTube and IMSA.TV
+    IMSA:                           # outside the US, imsa.com lists qualifying + race on YouTube and IMSA.TV
       - match: {session_types: [QUALI, RACE]}
-        youtube: "@IMSA"            # verify the handle
+        youtube: "@IMSAOfficial"    # site links youtube.com/IMSAOfficial
         label: IMSA (YouTube)
       - match: {session_types: [QUALI, RACE]}
-        url: https://www.youtube.com/@IMSA/streams
+        url: https://www.youtube.com/IMSAOfficial/streams
         label: IMSA (YouTube)
-    DM:
-      - youtube: "@driftmasters"    # verify the handle
+    DM:                             # the collector sets exact links from dm.gp; this is the fallback
+      - match: {session_types: [QUALI]}
+        url: https://www.youtube.com/@DriftMastersGrandPrix/streams
         label: Drift Masters (YouTube)
-      - url: https://www.youtube.com/@driftmasters/streams
-        label: Drift Masters (YouTube)
-    FD:
-      - youtube: "@formulad"        # verify the handle
-        label: Formula Drift (YouTube)
-      - url: https://www.youtube.com/@formulad/streams
-        label: Formula Drift (YouTube)
+    FD:                             # the collector sets formulad.com/live from the schedule; fallback
+      - match: {session_types: [QUALI, RACE]}
+        url: https://www.formulad.com/live
+        label: Formula DRIFT live
     # GTWCA / GTWCAS / IGTC share the GT World channel:
     # GTWCA: [{youtube: "@GTWorld", label: GT World (YouTube)}]
     # MotoGP: [{url: "<your broadcaster or VideoPass link>", label: MotoGP}]

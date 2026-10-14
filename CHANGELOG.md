@@ -8,6 +8,15 @@
 - New collector `imsa`: IMSA WeatherTech SportsCar Championship from imsa.com, with
   the season selector, ET→venue timezone conversion, races matched by name or
   duration, and the midnight split of the Rolex 24 merged.
+- New collector `driftmasters`: Drift Masters from dm.gp, with per-round timetables and
+  exact stream links (YouTube for qualifying, Red Bull TV for the battles).
+- New collector `formuladrift`: Formula DRIFT from formulad.com, with practice,
+  qualifying, Top 32/16 and the livestream link.
+- New collector `gtopen`: International GT Open; the calendar comes from the site,
+  and sessions from the next-race schedule PDF (kept per round after the weekend).
+  Adds `pypdf`.
+- Stream channels checked against the official sites: `@GTOPENseries`,
+  `@IMSAOfficial`, `user:24HSeries`, `@DriftMastersGrandPrix`.
 - `stale_max_days: 0` keeps a failing collector's data until each season is over.
 - `log_level` in config.yaml.
 - Streaming rules accept legacy YouTube usernames (`user:Name`).

@@ -108,3 +108,107 @@ def test_imsa_season_url_from_selector(tmp_path):
     c = _make(ImsaCollector, IMSA, tmp_path)
     assert c._season_url(2027) == "https://www.imsa.com/weathertech/2027-schedule/"
     assert c._season_url(2026).endswith("weathertech-2026-schedule/")
+
+
+# ---- Drift Masters ----------------------------------------------------------------
+DM = {
+    "/umbraco/api/v1/seasons/de78e5bb-ebc3-4d79-abdf-fdcf4fd99c26/rounds/f684aa51-e27b-4f95-bb76-99862f3abf10/event": "dm_round_7_event.json",
+    "/umbraco/api/v1/seasons/de78e5bb-ebc3-4d79-abdf-fdcf4fd99c26/rounds/f684aa51-e27b-4f95-bb76-99862f3abf10/live": "dm_round_7_live.json",
+    "/rounds/round-7": "dm_round_7.html",
+    "/seasons/drift-masters-2026/": "dm_season_2026.html",
+}
+
+
+def test_driftmasters_round_with_timetable(tmp_path):
+    from mscal.collectors.driftmasters import DriftMastersCollector
+
+    out = _make(DriftMastersCollector, DM, tmp_path).collect(2026)
+    r7 = {s.name: s for s in out if s.event_name == "Round 7 – Warsaw"}
+    assert set(r7) == {"Qualification Round 7 – 1st Session", "Qualification Round 7 – 2nd Session",
+                       "TOP 32 Drift Masters Battles", "TOP 16 Battles", "TOP 8 Battles"}
+    q1 = r7["Qualification Round 7 – 1st Session"]
+    assert q1.session_type == SessionType.QUALI and q1.tz == "Europe/Warsaw"
+    assert (q1.start.isoformat(), q1.end.strftime("%H:%M")) == ("2026-09-11T17:30:00+02:00", "19:15")
+    top32 = r7["TOP 32 Drift Masters Battles"]
+    assert top32.session_type == SessionType.RACE
+    assert (top32.start.isoformat(), top32.end.strftime("%H:%M")) == ("2026-09-12T15:00:00+02:00", "17:15")
+    # exact streams from the site's /live endpoint
+    assert q1.stream_url == "https://www.youtube.com/watch?v=vPhV55wK1JA"
+    assert top32.stream_url.startswith("https://www.redbull.com/embed/") and top32.stream_label == "Red Bull TV"
+    assert r7["TOP 8 Battles"].stream_label == "Red Bull TV"   # no embed -> channel fallback
+    assert "PGE Narodowy, Poland" == q1.location
+
+
+def test_driftmasters_round_without_details_falls_back_to_card(tmp_path):
+    from mscal.collectors.driftmasters import DriftMastersCollector
+
+    out = _make(DriftMastersCollector, DM, tmp_path).collect(2026)
+    r6 = [s for s in out if s.event_name.startswith("Round 6")]
+    assert len(r6) == 1 and r6[0].session_type == SessionType.EVENT
+    assert (str(r6[0].start), str(r6[0].end), r6[0].tz) == ("2026-08-14", "2026-08-17", "Europe/Berlin")
+
+
+# ---- Formula DRIFT ----------------------------------------------------------------
+FD = {"/schedule/2026/long-beach2": "fd_event_long-beach2_2026.html", "/schedule": "fd_listing_2026.html"}
+
+
+def test_formuladrift_round(tmp_path):
+    from mscal.collectors.formuladrift import FormulaDriftCollector
+
+    out = _make(FormulaDriftCollector, FD, tmp_path).collect(2026)
+    lb = {s.name: s for s in out if s.event_name == "Shoreline Showdown"}
+    assert set(lb) == {"Practice", "Practice 2", "Qualifying", "Top 32", "Top 16"}
+    q = lb["Qualifying"]
+    assert q.tz == "America/Los_Angeles" and q.session_type == SessionType.QUALI
+    assert (q.start.isoformat(), q.end.strftime("%H:%M")) == ("2026-10-23T18:15:00-07:00", "21:15")
+    assert q.stream_url == "https://www.formulad.com/live"
+    assert lb["Top 32"].session_type == SessionType.RACE
+    assert lb["Top 16"].start.isoformat() == "2026-10-24T18:00:00-07:00"
+    assert lb["Practice"].stream_url is None
+    assert "Long Beach Convention & Entertainment Center" in q.location
+
+    # Atlanta: page not captured (404) -> placeholder from the listing card
+    atl = [s for s in out if s.event_name == "Road To The Championship"]
+    assert len(atl) == 1 and atl[0].session_type == SessionType.EVENT
+    assert (str(atl[0].start), str(atl[0].end), atl[0].tz) == ("2026-05-07", "2026-05-10", "America/New_York")
+
+
+# ---- International GT Open --------------------------------------------------------
+GTO = {
+    "BARCELONA%202026%20schedule": "gto_schedule_barcelona_2026.txt",   # served as the "PDF"
+    "/calendario": "gto_calendario_2026.html",
+    "gtopen.gtsport.es/": "gto_home_2026.html",
+}
+
+
+def test_gtopen_parses_next_race_pdf_and_keeps_it(tmp_path, monkeypatch):
+    from mscal.collectors import gtopen
+
+    # the fixture is the PDF's extracted text; skip the PDF decoding step
+    monkeypatch.setattr(gtopen, "pdf_to_text", lambda content: content.decode())
+    c = _make(gtopen.GtOpenCollector, GTO, tmp_path)
+    out = c.collect(2026)
+
+    bcn = {s.name: s for s in out if s.event_name == "Barcelona"}
+    assert set(bcn) == {"Free Practice 1", "Free Practice 2", "Free Practice 3 (Bronze)",
+                        "Qualifying 1", "Qualifying 2", "Race 1", "Race 2"}
+    r1, r2 = bcn["Race 1"], bcn["Race 2"]
+    assert r1.tz == "Europe/Madrid"
+    assert (r1.start.isoformat(), r1.end.strftime("%H:%M")) == ("2026-10-24T15:10:00+02:00", "16:20")
+    # race 2: series name is on the line before the row; GT Cup's race 2 (series after) is not taken
+    assert (r2.start.isoformat(), r2.end.strftime("%H:%M")) == ("2026-10-25T13:30:00+01:00", "14:30")
+    assert bcn["Qualifying 1"].start.strftime("%a %H:%M") == "Sat 10:40"
+    assert bcn["Free Practice 1"].session_type == SessionType.FP
+    assert "Private test" not in " ".join(bcn)
+
+    # other rounds: weekend placeholders; the winter test is skipped by default
+    spa = [s for s in out if s.event_name == "Spa-Francorchamps"]
+    assert len(spa) == 1 and spa[0].tz == "Europe/Brussels"                  # "Bélgica"
+    assert (str(spa[0].start), str(spa[0].end)) == ("2026-05-15", "2026-05-18")
+    assert not any("Winter" in s.event_name for s in out)
+
+    # after the weekend the homepage links another race: Barcelona keeps its sessions
+    c.state.flush()  # the runner saves state at the end of every run
+    monkeypatch.setattr(gtopen, "parse_next_race", lambda html: None)
+    again = _make(gtopen.GtOpenCollector, GTO, tmp_path).collect(2026)
+    assert {s.name for s in again if s.event_name == "Barcelona"} == set(bcn)

@@ -51,7 +51,7 @@ block accepts these common keys:
 
 | key | |
 |---|---|
-| `type` | `motocal`, `wrc`, `creventic`, `imsa`, `jsonld` or `manual` |
+| `type` | `motocal`, `wrc`, `creventic`, `imsa`, `driftmasters`, `formuladrift`, `gtopen`, `jsonld` or `manual` |
 | `enabled` | `false` to switch it off without deleting it |
 | `series` | short tag used in titles: `[WEC]` |
 | `championship` | full name, used as a label |
@@ -108,6 +108,33 @@ collectors:
 | `season_urls` | none | `{2027: https://...}` to pin a season page |
 | `series_regex` | `WeatherTech` | which series' practice/qualifying rows to keep |
 | `venue_timezones` | built-in by US state / province | `{"Venue": "Area/City"}` overrides |
+| `session_types` | `[FP, QUALI, RACE]` | |
+
+### `type: driftmasters`
+
+| key | default | |
+|---|---|---|
+| `base_url` | `https://dm.gp` | |
+| `season_slug` | `drift-masters-{year}` | season page slug |
+| `country_timezones` | built-in | `{ISO3: zone}` overrides, e.g. `{GBR: Europe/London}` |
+| `session_types` | `[FP, QUALI, RACE]` | `RACE` = the battles |
+
+### `type: formuladrift`
+
+| key | default | |
+|---|---|---|
+| `base_url` | `https://www.formulad.com` | |
+| `venue_timezones` | by US state | `{"Venue": "Area/City"}` overrides |
+| `session_types` | `[FP, QUALI, RACE]` | `RACE` = Top 32 / Top 16 |
+
+### `type: gtopen`
+
+| key | default | |
+|---|---|---|
+| `base_url` | `https://gtopen.gtsport.es` | |
+| `series_name` | `International GT Open` | category label in the PDF to keep |
+| `skip_regex` | `\btest\b` | rounds to ignore |
+| `country_timezones` | built-in (EN/ES names) | `{country: zone}` overrides |
 | `session_types` | `[FP, QUALI, RACE]` | |
 
 ### `type: jsonld`
