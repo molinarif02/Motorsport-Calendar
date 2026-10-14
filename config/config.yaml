@@ -32,11 +32,13 @@ schedule:
 
 # -----------------------------------------------------------------------------
 # Championships. `type` picks the data source:
-#   motocal  any championship of the motorsport-calendar library - just set `provider`
-#            (list them: docker compose run --rm generator providers)
-#   wrc      World Rally Championship, one event per special stage
-#   jsonld   schema.org events from a web page
-#   manual   hand-written sessions in manual.yaml
+#   motocal       any championship of the motorsport-calendar library - just set `provider`
+#                 (list them: docker compose run --rm generator providers)
+#   wrc           World Rally Championship, one event per special stage
+#   creventic     Michelin 24H Series          imsa          IMSA WeatherTech
+#   driftmasters  Drift Masters                formuladrift  Formula DRIFT
+#   gtopen        International GT Open        tribe/jsonld  circuit event calendars
+#   manual        hand-written sessions in manual.yaml
 # Labels (series tag, championship, race type) come from built-in defaults; any key
 # can be overridden. GT/circuit series keep only FP, QUALI and RACE (`session_types`).
 # -----------------------------------------------------------------------------
@@ -47,8 +49,7 @@ collectors:
     type: wrc
     stage_window_minutes: 90        # first car -> roughly the last priority car
     include_shakedown: true
-    # events: [{id: 1234, name: Rally Japan, country: Japan}]  # pin rallies if the season endpoint moves
-    # rally_timezones: {"Rally Name": "Area/City"}            # extra/overriding entries
+    # rally_timezones: {"Rally Name": "Area/City"}   # fallback zones when the API's is missing
   24h:
     type: creventic                 # Michelin 24H Series, from 24hseries.com
     merge_qualifying: true          # one "Qualifying (all classes)" instead of 9 class slots
@@ -81,8 +82,9 @@ collectors:
 # -----------------------------------------------------------------------------
 # Tracked circuits. Anything from any series held at a tracked circuit gets the
 # circuit's label (e.g. "Monza") and its exact coordinates. Adding a `calendar:`
-# block also scrapes the circuit's own event list (schema.org JSON-LD) so events
-# from championships you don't follow show up too.
+# block also reads the circuit's own event list (`type: tribe` for WordPress
+# event sites like Monza's, or `jsonld`) so events from championships you don't
+# follow show up too.
 #   match: words looked for in the event location / name (default: the key)
 # -----------------------------------------------------------------------------
 tracked_circuits:
