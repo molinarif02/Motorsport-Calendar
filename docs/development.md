@@ -3,12 +3,14 @@
 ## Setup
 
 ```bash
-python3.13 -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt pytest ruff
+python3.14 -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt
 pytest -q
 ```
 
-Python 3.12 or newer is required (by the motorsport-calendar library).
+Python 3.12 or newer is required; 3.12 to 3.15 are tested and the container uses 3.14.
+Runtime dependencies are pinned exactly in `requirements.txt`, and test tools in
+`requirements-dev.txt`.
 
 ## Running locally
 
@@ -37,9 +39,21 @@ real pipeline runs against the fakes.
 
 | workflow | trigger | what it does |
 |---|---|---|
-| `ci.yml` | push, pull request | lint (ruff) and tests on Python 3.12 and 3.13 |
+| `ci.yml` | push, pull request | lint (ruff) and tests on Python 3.12 and 3.14 (required) and 3.15 (early warning); deprecation warnings fail the run |
 | `image.yml` | push to `main`, tags `v*` | builds the multi-arch image (amd64 and arm64) and pushes it to GHCR as `latest` / `<tag>` / `sha-…` |
 | `live-check.yml` | weekly + manual | runs the **real** scrapers on a GitHub runner and uploads `motorsport.ics` and `status.json` as artifacts. It fails if a core collector is broken, so you hear about website changes. |
+
+## Versions
+
+| component | version | why |
+|---|---|---|
+| Python | 3.14 (`python:3.14-slim-trixie`) | latest stable series with arm64 wheels for every dependency (3.15.0 is days old; PyYAML has no arm64 wheel for it yet) |
+| Debian | 13 "trixie" | current Debian stable |
+| nginx | 1.30 (`nginx:1.30-alpine`) | current nginx stable branch |
+| cloudflared | 2026.10.0 | pinned, bump deliberately |
+| GitHub Actions | checkout/setup-python/upload-artifact v7, docker actions v4–v7 | latest majors (Node 24) |
+
+To update: bump the pins, run `pytest`, push, and watch the CI and Live check workflows.
 
 ## Releasing
 

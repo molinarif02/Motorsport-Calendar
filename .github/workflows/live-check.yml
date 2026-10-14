@@ -22,10 +22,10 @@ jobs:
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # optional repo secret
       CORE: wec gtwce wrc 24h imsa dm fd gtopen circuit-monza # these must succeed
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
           cache: pip
       - run: pip install -r requirements.txt
       - name: Run once against the live sources
@@ -43,7 +43,7 @@ jobs:
           for n, c in s["collectors"].items():
               print(f"| {n} | {'✅' if c['ok'] else '❌'} | {c['sessions']} | {'; '.join(c['errors'])[:300]} |")
           EOF
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: live-calendar

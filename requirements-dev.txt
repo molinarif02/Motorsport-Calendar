@@ -1,0 +1,5 @@
+# Test and lint tools (CI and local development)
+-r requirements.txt
+pytest==9.1.1
+ruff==0.17.0
+reportlab==5.0.1             # builds a real PDF in the GT Open PDF test

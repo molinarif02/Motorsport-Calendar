@@ -6,8 +6,8 @@ It also runs on any Docker or Podman host.
 | service | image | role | memory cap |
 |---|---|---|---|
 | `generator` | `ghcr.io/molinarif02/motorsport-calendar` (or built locally) | runs the pipeline in a loop | 256 MB |
-| `web` | `nginx:1.27-alpine` | serves `/motorsport.ics` and `/status.json` on `:8080` | 32 MB |
-| `tunnel` (profile) | `cloudflare/cloudflared` | optional public HTTPS without opening ports | 64 MB |
+| `web` | `nginx:1.30-alpine` | serves `/motorsport.ics` and `/status.json` on `:8080` | 32 MB |
+| `tunnel` (profile) | `cloudflare/cloudflared:2026.10.0` | optional public HTTPS without opening ports | 64 MB |
 
 Volumes:
 

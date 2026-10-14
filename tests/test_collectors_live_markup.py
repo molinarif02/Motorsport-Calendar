@@ -275,3 +275,37 @@ def test_monza_races_from_tribe_api(tmp_path):
     assert out["International GT Open"].series == "GTOPEN"
     assert out["Monza Revival"].series == "MONZA"
     assert wec.geo == (45.6156, 9.2811)
+
+
+def test_gtopen_real_pdf_roundtrip():
+    """Render the captured timetable rows into an actual PDF (columns as separate text
+    runs, like the original) and parse it through pypdf, the path used in production."""
+    import io
+
+    import pytest
+
+    canvas_mod = pytest.importorskip("reportlab.pdfgen.canvas")
+    from reportlab.lib.pagesizes import A4
+
+    from mscal.collectors import gtopen
+
+    buf = io.BytesIO()
+    c = canvas_mod.Canvas(buf, pagesize=A4)
+    y = 800
+    for line in (FIX / "gto_schedule_barcelona_2026.txt").read_text().splitlines():
+        x = 30
+        for cell in [p for p in line.split("  ") if p.strip()]:  # each column = own text run
+            c.drawString(x, y, cell.strip())
+            x += max(60, 6 * len(cell.strip()))
+        y -= 12
+        if y < 40:
+            c.showPage()
+            y = 800
+    c.save()
+
+    text = gtopen.pdf_to_text(buf.getvalue())
+    sessions = {n: (s, e) for _, n, s, e in gtopen.parse_schedule(text, 2026)}
+    assert set(sessions) == {"Free Practice 1", "Free Practice 2", "Free Practice 3 (Bronze)",
+                             "Qualifying 1", "Qualifying 2", "Race 1", "Race 2"}
+    assert sessions["Race 1"][0].strftime("%d %H:%M") == "24 15:10"
+    assert sessions["Race 2"][0].strftime("%d %H:%M") == "25 13:30"

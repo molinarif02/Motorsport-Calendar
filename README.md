@@ -33,7 +33,7 @@ Docker Compose.
   `status.json`.
 - **Configurable**: enable MotoGP / Moto2 / Moto3, GT World Challenge America and
   Asia, IGTC, ELMS, F1 and more with one line each, and track additional circuits.
-- **Small**: about 50 MB of dependencies on python:3.13-slim (arm64 and amd64), and a
+- **Small**: about 50 MB of dependencies on python:3.14-slim (Debian 13, arm64 and amd64), and a
   32 MB nginx container serves the feed.
 
 ## Quick start (Raspberry Pi / any Docker host)

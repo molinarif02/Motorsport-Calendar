@@ -1,5 +1,9 @@
-motorsport-calendar==0.3.0   # MIT; WEC + GT World Challenge scrapers
-icalendar>=6.1,<8
-httpx>=0.27
-PyYAML>=6
-pypdf>=4.2      # GT Open timetable PDFs (pure Python)
+# Runtime dependencies, pinned to the latest releases (checked 2026-10-14).
+# Bump deliberately: run `pytest` and the Live check workflow after changing any pin.
+motorsport-calendar==0.3.0   # MIT; WEC, GT World Challenge, MotoGP... scrapers
+icalendar==7.3.0
+httpx==0.28.1
+PyYAML==6.0.3
+beautifulsoup4==4.15.0       # HTML parsing in the 24H/IMSA/drift/GT Open collectors
+lxml==6.1.3                  # parser backend for beautifulsoup4
+pypdf==6.20.1                # GT Open timetable PDFs (pure Python)

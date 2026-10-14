@@ -26,7 +26,7 @@ services:
     logging: {driver: json-file, options: {max-size: 2m, max-file: "2"}}
 
   web:
-    image: nginx:1.27-alpine
+    image: nginx:1.30-alpine                  # nginx stable branch (1.30.x)
     restart: unless-stopped
     volumes:
       - www:/www:ro
@@ -39,7 +39,7 @@ services:
   # Optional public HTTPS without opening ports. Set TUNNEL_TOKEN in .env and route
   # your hostname to http://web:8080 in the Cloudflare dashboard.
   tunnel:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:2026.10.0   # pinned; bump deliberately
     profiles: [tunnel]
     restart: unless-stopped
     command: tunnel --no-autoupdate run

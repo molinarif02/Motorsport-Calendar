@@ -12,15 +12,21 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
+      fail-fast: false
       matrix:
-        python: ["3.12", "3.13"]
+        python: ["3.12", "3.14"]      # oldest supported, and the version in the image
+        experimental: [false]
+        include:
+          - python: "3.15"            # newest release: early warning, does not fail the build
+            experimental: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-      - run: pip install -r requirements.txt pytest ruff
+      - run: pip install -r requirements-dev.txt
       - run: ruff check .
-      - run: pytest -q
+      - run: pytest -q -W error::DeprecationWarning

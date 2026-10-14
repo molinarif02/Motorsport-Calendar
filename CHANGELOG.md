@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.1 – 2026-10-14
+
+Maintenance: latest stable versions everywhere, all verified.
+
+- Python 3.14 (`python:3.14-slim-trixie`, Debian 13) in the image, up from 3.13.
+  Tested on 3.12, 3.13, 3.14 and 3.15. 3.15.0 is not used in the image yet: PyYAML
+  has no arm64 wheel for it.
+- nginx 1.30 stable (`nginx:1.30-alpine`, up from 1.27); cloudflared pinned to
+  2026.10.0 instead of `latest`.
+- GitHub Actions on their latest majors (Node 24): checkout, setup-python and
+  upload-artifact v7; setup-qemu, setup-buildx and login v4; metadata v6;
+  build-push v7.
+- Runtime dependencies pinned exactly (`requirements.txt`). `beautifulsoup4` and
+  `lxml` are now declared, where before they came in only as transitive
+  dependencies. Test tools are in `requirements-dev.txt`.
+- CI: Python 3.12 + 3.14 required, 3.15 as an early warning; deprecation warnings fail
+  the run.
+- New test renders a real PDF and parses it through pypdf (the GT Open path).
+- Container health check uses JSON (exec) form.
+
 ## 1.1.0 – 2026-10-14
 
 - New collector `creventic`: Michelin 24H Series from 24hseries.com, with per-race
