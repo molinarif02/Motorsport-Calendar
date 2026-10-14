@@ -6,13 +6,14 @@ A collector turns one data source into `Session` objects (see
 | type | module | sources | reliability |
 |---|---|---|---|
 | `motocal` | `mscal/collectors/motocal.py` | [motorsport-calendar](https://github.com/naviss29/motorsport-calendar) library: fiawec.com and ACO sites (JSON-LD), SRO timetables (HTML), Dorna Pulselive API, OpenF1/Jolpica, f1calendar dataset | maintained upstream; update the pinned version to pick up fixes |
-| `wrc` | `mscal/collectors/wrc.py` | WRC live-timing JSON (`api.wrc.com`) | undocumented API, may move between seasons |
+| `wrc` | `mscal/collectors/wrc.py` | the JSON API behind wrc.com's results/itinerary pages | API checked 2026-10 (the old `api.wrc.com` is gone) |
 | `creventic` | `mscal/collectors/creventic.py` | 24hseries.com race listing + per-race timetables (HTML) | site markup, checked 2026-10 |
 | `imsa` | `mscal/collectors/imsa.py` | imsa.com season pages + event schedules (HTML) | site markup, checked 2026-10 |
 | `driftmasters` | `mscal/collectors/driftmasters.py` | dm.gp season page + the site's own JSON API (timetable, streams) | site markup/API, checked 2026-10 |
 | `formuladrift` | `mscal/collectors/formuladrift.py` | formulad.com schedule + round pages (HTML) | site markup, checked 2026-10 |
 | `gtopen` | `mscal/collectors/gtopen.py` | gtopen.gtsport.es calendar (Next.js payload) + next-race schedule PDF | PDF layout is the weak point |
 | `jsonld` | `mscal/collectors/jsonld.py` | schema.org events embedded in web pages | depends on each site's markup |
+| `tribe` | `mscal/collectors/tribe.py` | WordPress "The Events Calendar" REST API (Monza) | API checked 2026-10 |
 | `manual` | `mscal/collectors/manual.py` | `config/manual.yaml` | exactly as good as what you type |
 
 ## Failure handling
@@ -49,15 +50,20 @@ A scraper that breaks therefore never silently empties the calendar. Monitor
 
 ### wrc
 
-- Times come from each stage's `StageStart` control. The `firstCarDueDateTimeLocal`
-  field is preferred, and `firstCarDueDateTime` (UTC) is the fallback.
-- The rally timezone comes from a built-in table, matched on id, then name, then
-  country. A missing entry logs a warning and falls back to UTC; add it with
-  `rally_timezones`.
-- The stage start place is derived from the name ("Tejeda - Moya 1" → "Tejeda") and
-  geocoded with the country.
-- If the season endpoint changes, set `events: [{id, name, country}]`. Event ids
-  appear in the URLs of wrc.com's results pages.
+- wrc.com moved to Red Bull's platform in 2026 and the old `api.wrc.com` endpoints
+  stopped working. The results widget's API is used now: `seasons.json`, then
+  `season-detail.json`, then `events/{id}.json`, then
+  `events/{id}/itineraries/{id}.json`.
+- Times come from each stage's `StageStart` control (`firstCarDueDateTimeLocal`,
+  with offset).
+- The timezone is the event's `timeZoneId` when it is a valid IANA zone in the
+  expected region. Unpublished events carry placeholders (the 2027 Monte-Carlo had
+  "AUS Eastern Standard Time"); those fall back to the built-in table
+  (`rally_timezones` to extend it).
+- The stage start place is derived from the control name ("Toudon / Saint-Antonin"
+  becomes "Toudon") and geocoded with the country.
+- Rallies whose itinerary isn't published yet are all-day placeholders over the
+  event dates.
 
 ### creventic (24H Series)
 
@@ -117,6 +123,19 @@ A scraper that breaks therefore never silently empties the calendar. Monitor
 - Rounds matching `skip_regex` (default: tests) are ignored.
 - If the PDF layout changes, the log says "had no International GT Open sessions",
   and the round falls back to its placeholder.
+
+### tribe (circuit calendars)
+
+- Many circuit websites use the WordPress plugin "The Events Calendar", which
+  exposes `/wp-json/tribe/events/v1/events`. Monza files races under the category
+  `gare`, separate from tours, track days, tests and cycling events.
+- Monza's event times are gate hours (09:00–18:00), not sessions, so events become
+  all-day entries over their dates. `series_map` tags known series; those
+  placeholders hide automatically when that series' collector has timed sessions
+  on those days.
+- To track another circuit on the same plugin, add
+  `calendar: {type: tribe, api: https://<site>/wp-json/tribe/events/v1/events}`. List
+  its categories at `/wp-json/tribe/events/v1/categories`.
 
 ### jsonld
 

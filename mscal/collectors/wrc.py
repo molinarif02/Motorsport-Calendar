@@ -1,32 +1,37 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 Federico Molinari
-"""WRC: one calendar event per special stage, from the (unofficial) WRC results API.
+"""WRC: one calendar event per special stage, from the API behind wrc.com's results pages.
 
-Data flow::
+The old ``api.wrc.com`` endpoints are gone (wrc.com moved to Red Bull's platform in
+2026). The results/itinerary widget on wrc.com now reads (checked October 2026)::
 
-    {season_url}                                   -> rallies of the active season
-    {results_api}/rally-event/{eventId}/itinerary  -> legs > sections > controls + stages
+    {api_base}/seasons.json                         -> [{seasonId, name, year}]
+    {api_base}/season-detail.json?seasonId=N        -> seasonRounds[{order, event{...}}]
+    {api_base}/events/{eventId}.json                -> rallies[{isMain, itineraryId}]
+    {api_base}/events/{eventId}/itineraries/{id}.json -> legs > sections > controls + stages
+
+``event`` carries the rally name, country, location, start/finish dates and a
+``timeZoneId``.
 
 * **Start time**: the scheduled first-car time at the stage's ``StageStart`` control.
-  The ``...Local`` field is preferred; the UTC field is the fallback.
-* **Timezone**: looked up from :data:`DEFAULT_RALLY_TIMEZONES` (overridable with
-  ``rally_timezones:``), matched on event id, then rally name, then country - so
-  "Rally Islas Canarias" gets ``Atlantic/Canary`` even though its country is Spain.
-* **Location**: the API gives names, not coordinates. The start place is derived
-  from the control/stage name ("Cagnano - Pino - Canari 2" -> "Cagnano") and
-  geocoded together with the country (cached forever).
+  ``firstCarDueDateTimeLocal`` (with offset) is preferred; ``firstCarDueDateTime`` is UTC.
+* **Timezone**: the event's ``timeZoneId`` when it is a valid IANA zone in the
+  expected region. Unpublished events carry placeholders (the 2027 Monte-Carlo had
+  "AUS Eastern Standard Time"), so a Windows name or a zone on the wrong continent
+  falls back to :data:`DEFAULT_RALLY_TIMEZONES` (name/country fragments, overridable
+  with ``rally_timezones``).
+* **Location**: the start place is derived from the stage-start control name
+  ("Toudon / Saint-Antonin" -> "Toudon") and geocoded with the country (cached).
 * **End time**: start + ``stage_window_minutes`` (first car to roughly the last
-  priority car), since the API has no stage end time.
-
-The endpoints are undocumented and have changed between seasons: every field read
-here is defensive, and the endpoints are configurable. If the season list breaks,
-pin the rallies by hand with ``events: [{id, name, country}]``.
+  priority car); the itinerary has no stage end time.
+* Rallies whose itinerary is not published yet (empty ``itineraryLegs``) become an
+  all-day placeholder over the event dates.
 """
 from __future__ import annotations
 
 import logging
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from ..models import Session, SessionType
@@ -51,19 +56,19 @@ DEFAULT_RALLY_TIMEZONES: dict[str, str] = {
 
 
 class WrcCollector(Collector):
-    """Config keys (all optional): ``season_url``, ``results_api``, ``events``,
-    ``stage_window_minutes`` (90), ``include_shakedown`` (true), ``rally_timezones``,
-    plus the usual label keys."""
+    """Config keys (all optional): ``api_base``, ``season_name`` (default "World Rally
+    Championship"), ``stage_window_minutes`` (90), ``include_shakedown`` (true),
+    ``rally_timezones``, plus the usual label keys."""
 
-    required = ("series", "results_api")
+    required = ("series", "api_base")
 
     @classmethod
     def defaults(cls, cfg: dict) -> dict:
         return {
             "series": "WRC", "championship": "FIA World Rally Championship",
-            "discipline": "Rally", "info_url": "https://www.wrc.com",
-            "season_url": "https://api.wrc.com/contel-page/83388/calendar/active-season/",
-            "results_api": "https://api.wrc.com/results-api",
+            "discipline": "Rally", "info_url": "https://www.wrc.com/en/calendar",
+            "api_base": "https://p-p.redbull.com/rb-wrccom-lintegration-yv-prod/api",
+            "season_name": "World Rally Championship",
         }
 
     @classmethod
@@ -76,43 +81,58 @@ class WrcCollector(Collector):
                 errors.append(f"{name}: rally_timezones.{k}: unknown timezone '{tz}'")
         return errors
 
+    def _get(self, path: str):
+        r = self.http.get(self.cfg["api_base"].rstrip("/") + path)
+        r.raise_for_status()
+        return r.json()
+
     def collect(self, season: int) -> list[Session]:
-        rallies = self._rallies()
+        seasons = self._get("/seasons.json")
+        sid = next((s["seasonId"] for s in seasons if s.get("year") == season
+                    and self.cfg["season_name"].lower() in s.get("name", "").lower()), None)
+        if sid is None:
+            raise RuntimeError(f"wrc: season {season} not published yet")
+        rounds = sorted(self._get(f"/season-detail.json?seasonId={sid}").get("seasonRounds") or [],
+                        key=lambda r: r.get("order", 0))
+        if not rounds:
+            raise RuntimeError(f"wrc: season {season} has no rounds")
         out: list[Session] = []
-        for r in rallies:
+        for rnd in rounds:
+            ev = rnd.get("event") or {}
             try:
-                out += self._rally_stages(season, r)
+                out += self._event(season, ev)
             except Exception as e:  # one broken rally must not drop the others
-                log.warning("wrc: rally %s skipped: %s", r.get("name"), e)
-        if not out:
-            raise RuntimeError("wrc: no stages parsed (API changed or not published yet)")
+                log.warning("wrc: rally %s skipped: %s", ev.get("name"), e)
         return out
 
-    # ---- season -------------------------------------------------------------------
-    def _rallies(self) -> list[dict]:
-        """List of ``{id, name, country}`` for the active season (or the manual pin)."""
-        if self.cfg.get("events"):
-            return self.cfg["events"]
-        r = self.http.get(self.cfg["season_url"])
-        r.raise_for_status()
-        items = _first_list(r.json(), ("content", "items", "events", "data")) or []
-        rallies = []
-        for it in items:
-            eid = it.get("eventId") or it.get("id")
-            name = it.get("name") or it.get("title") or f"Rally {eid}"
-            country = it.get("country")
-            if isinstance(country, dict):
-                country = country.get("name")
-            rallies.append({"id": eid, "name": _clean_name(name),
-                            "country": country or it.get("countryName") or it.get("location") or ""})
-        return [r for r in rallies if r["id"]]
+    def _event(self, season: int, ev: dict) -> list[Session]:
+        rally = {"id": ev["eventId"], "name": _clean_name(ev.get("name", "")),
+                 "country": (ev.get("country") or {}).get("name", ""),
+                 "location": ev.get("location", ""), "api_tz": ev.get("timeZoneId")}
+        legs = []
+        try:
+            detail = self._get(f"/events/{rally['id']}.json")
+            main = next((r for r in detail.get("rallies") or [] if r.get("isMain")), None)
+            if main and main.get("itineraryId"):
+                legs = self._get(f"/events/{rally['id']}/itineraries/{main['itineraryId']}.json").get("itineraryLegs") or []
+        except Exception as e:
+            log.info("wrc: %s itinerary unavailable (%s); using event dates", rally["name"], e)
+        stages = self._rally_stages(season, rally, legs)
+        if stages:
+            return stages
+        first = date.fromisoformat(ev["startDate"][:10])
+        last = date.fromisoformat(ev["finishDate"][:10])
+        if first.year != season:
+            return []
+        return [Session(series=self.series, championship=self.championship, discipline=self.discipline,
+                        season=season, event_name=rally["name"], session_type=SessionType.EVENT,
+                        name=rally["name"], start=first, end=last + timedelta(days=1),
+                        tz=self._rally_tz(rally),
+                        location=", ".join(x for x in (rally["location"], rally["country"]) if x),
+                        info_url=self.cfg.get("info_url"), key=f"{rally['id']}|weekend")]
 
-    # ---- one rally ------------------------------------------------------------------
-    def _rally_stages(self, season: int, rally: dict) -> list[Session]:
-        base = self.cfg["results_api"].rstrip("/")
-        r = self.http.get(f"{base}/rally-event/{rally['id']}/itinerary")
-        r.raise_for_status()
-        legs = r.json().get("itineraryLegs") or []
+    # ---- one rally --------------------------------------------------------------------
+    def _rally_stages(self, season: int, rally: dict, legs: list) -> list[Session]:
         tzname = self._rally_tz(rally)
         tz = ZoneInfo(tzname)
         window = timedelta(minutes=int(self.cfg.get("stage_window_minutes", 90)))
@@ -148,7 +168,8 @@ class WrcCollector(Collector):
                         cancelled=str(st.get("status", "")).lower() == "cancelled",
                         key=f"{rally['id']}|{code}",
                     ))
-        log.info("wrc: %s -> %d stages (%s)", rally["name"], len(out), tzname)
+        if out:
+            log.info("wrc: %s -> %d stages (%s)", rally["name"], len(out), tzname)
         return out
 
     def _rally_tz(self, rally: dict) -> str:
@@ -157,29 +178,24 @@ class WrcCollector(Collector):
         table = {**user, **{k: v for k, v in DEFAULT_RALLY_TIMEZONES.items() if k not in user}}
         if str(rally["id"]) in table:
             return table[str(rally["id"])]
+        guess = None
         for field in ("name", "country"):
             hay = str(rally.get(field) or "").lower()
-            for k, v in table.items():
-                if hay and k.lower() in hay:
-                    return v
+            guess = guess or next((v for k, v in table.items() if hay and k.lower() in hay), None)
+        api = rally.get("api_tz")
+        if api and "/" in api:
+            try:
+                ZoneInfo(api)
+                # trust the API unless it contradicts the table's region (placeholders)
+                if guess is None or guess.split("/")[0] == api.split("/")[0]:
+                    return api
+            except Exception:
+                pass
+        if guess:
+            return guess
         log.warning("wrc: no timezone for %s/%s, using UTC (add it to rally_timezones)",
                     rally["name"], rally["country"])
         return "UTC"
-
-
-def _first_list(data, keys) -> list | None:
-    """Find the first list under any of ``keys`` (searching nested dicts too)."""
-    if isinstance(data, list):
-        return data
-    for k in keys:
-        v = data.get(k) if isinstance(data, dict) else None
-        if isinstance(v, list):
-            return v
-        if isinstance(v, dict):
-            inner = _first_list(v, keys)
-            if inner:
-                return inner
-    return None
 
 
 def _parse_time(ctrl: dict, tz: ZoneInfo) -> datetime | None:

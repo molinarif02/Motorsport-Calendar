@@ -91,20 +91,19 @@ tracked_circuits:
     tz: Europe/Rome
     geo: [45.6156, 9.2811]
     location: Autodromo Nazionale Monza, Viale di Vedano 5, Monza, Italy
-    calendar:
-      urls: [https://www.monzanet.it/en/calendar/]    # verify the listing URL on first run
-      follow_links_regex: "monzanet\\.it/(en/)?(event|events|evento)/"
-      max_pages: 40
+    calendar:                       # monzanet.it publishes its events through a WordPress REST API
+      type: tribe
+      api: https://www.monzanet.it/wp-json/tribe/events/v1/events
+      categories: [gare]            # races only (no tours, track days, tests, cycling)
       series: MONZA                 # tag for events not recognised by series_map
-      series_map:                   # event name regex -> series tag
-        "WEC|World Endurance": WEC
-        "GT World Challenge|Fanatec|GTWC": GTWCE
+      series_map:                   # event title regex -> series tag (hidden when that series has sessions)
+        "World Endurance|6 Hours of Monza": WEC
+        "GT World Challenge": GTWCE
         "GT Open": GTOPEN
-        "24H|Creventic": 24H
-        "ELMS|European Le Mans": ELMS
-        "Formula 1|Gran Premio d'Italia": F1
+        "Formula 1|Gran Premio": F1
 
-  # Label-only tracking (no scraping) is one block:
+  # Label-only tracking (no scraping) is one block. Circuits whose website uses the same
+  # WordPress plugin as Monza can get `calendar: {type: tribe, api: https://<site>/wp-json/tribe/events/v1/events}`.
   # imola:   {label: Imola,   match: [imola, enzo e dino ferrari], geo: [44.3439, 11.7167]}
   # mugello: {label: Mugello, match: [mugello], geo: [43.9975, 11.3719]}
   # misano:  {label: Misano,  match: [misano], geo: [43.9614, 12.6833]}

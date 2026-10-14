@@ -32,7 +32,7 @@ def test_catalog_covers_every_installed_provider():
 def test_defaults_and_enable_flags():
     specs = {name: cfg for name, _, cfg in M.collector_specs(_cfg())}
     assert specs["wec"]["series"] == "WEC" and specs["wec"]["source"] == "official"
-    assert specs["wrc"]["results_api"].startswith("https://")
+    assert specs["wrc"]["api_base"].startswith("https://")
     assert "motogp" not in specs  # enabled: false
     assert "circuit-monza" in specs and specs["circuit-monza"]["extra_labels"] == ["Monza"]
 

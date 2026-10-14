@@ -39,20 +39,29 @@ def _wrc_itinerary():
 
 
 def _transport(request: httpx.Request) -> httpx.Response:
+    req = request
     u = str(request.url)
-    if "contel-page" in u:
-        return httpx.Response(200, json={"content": [
-            {"eventId": 555, "name": "Rally Islas Canarias powered by X", "country": {"name": "Spain"}}]})
-    if "rally-event/555/itinerary" in u:
+    if "/seasons.json" in u:
+        return httpx.Response(200, json=[{"seasonId": 9, "name": "World Rally Championship", "year": YEAR}])
+    if "season-detail.json" in u:
+        d = SOON.date()
+        return httpx.Response(200, json={"seasonRounds": [{"order": 1, "eventId": 555, "event": {
+            "eventId": 555, "name": "Rally Islas Canarias", "country": {"name": "Spain"},
+            "location": "Las Palmas", "startDate": str(d), "finishDate": str(d),
+            "timeZoneId": "Europe/Madrid"}}]})                      # wrong zone: table must win
+    if "/events/555.json" in u:
+        return httpx.Response(200, json={"rallies": [{"isMain": True, "itineraryId": 77}]})
+    if "/events/555/itineraries/77.json" in u:
         return httpx.Response(200, json=_wrc_itinerary())
     if "nominatim" in u:
         return httpx.Response(200, json=[{"lat": "28.0", "lon": "-15.6"}])
     if "monzanet" in u:
-        ld = [{"@type": "SportsEvent", "name": "Monza Historic", "startDate": f"{YEAR}-11-07",
-               "endDate": f"{YEAR}-11-08", "url": "https://www.monzanet.it/x"},
-              {"@type": "Event", "name": "Fanatec GT World Challenge Monza",
-               "startDate": f"{YEAR}-11-20", "endDate": f"{YEAR}-11-22"}]
-        return httpx.Response(200, text=f'<script type="application/ld+json">{json.dumps(ld)}</script>')
+        assert req.url.params["categories"] == "gare"
+        return httpx.Response(200, json={"total_pages": 1, "events": [
+            {"id": 1, "title": "Monza Historic", "start_date": f"{YEAR}-11-07 09:00:00",
+             "end_date": f"{YEAR}-11-08 18:00:00", "timezone": "Europe/Rome", "url": "https://www.monzanet.it/x"},
+            {"id": 2, "title": "GT World Challenge Powered by AWS", "start_date": f"{YEAR}-11-20 09:00:00",
+             "end_date": f"{YEAR}-11-22 18:00:00", "timezone": "Europe/Rome"}]})
     if "googleapis.com/youtube/v3/channels" in u:
         return httpx.Response(200, json={"items": [{"id": "UCgt"}]})
     if "feeds/videos.xml" in u:
@@ -141,7 +150,7 @@ def test_full_run(env):
     assert str(gt["url"]) == "https://www.youtube.com/watch?v=VIDQUALI"
 
     # Monza JSON-LD: all-day, tagged by series_map, labelled Monza
-    gtm = ev["[GTWCE] [Event] Fanatec GT World Challenge Monza"]
+    gtm = ev["[GTWCE] [Event] GT World Challenge Powered by AWS"]
     assert "Monza" in [str(c) for c in gtm["categories"].cats]
     assert str(gtm["dtstart"].params.get("VALUE", "DATE")) == "DATE"
     assert "[MONZA] [Event] Monza Historic" in ev
@@ -186,7 +195,7 @@ def test_failing_collector_serves_cache(env, monkeypatch):
     cfg, tmp = env
     M.run_once(cfg, tmp / "data", tmp / "www")
     import mscal.collectors.wrc as wrc
-    monkeypatch.setattr(wrc.WrcCollector, "_rallies", lambda self: (_ for _ in ()).throw(httpx.ConnectError("down")))
+    monkeypatch.setattr(wrc.WrcCollector, "_get", lambda self, path: (_ for _ in ()).throw(httpx.ConnectError("down")))
     M.run_once(cfg, tmp / "data", tmp / "www")
     _, ev = _events(tmp / "www")
     assert any(n.startswith("[WRC]") for n in ev), "WRC must survive a failing scraper"

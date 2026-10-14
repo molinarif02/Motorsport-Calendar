@@ -113,20 +113,20 @@ def _circuits(cfg: dict) -> dict[str, dict]:
 
 
 def _circuit_collectors(cfg: dict) -> dict[str, dict]:
-    """One ``jsonld`` collector per tracked circuit that has a ``calendar:`` block."""
+    """One collector per tracked circuit with a ``calendar:`` block (``type``: jsonld or tribe)."""
     blocks = {}
     for key, c in _circuits(cfg).items():
         cal = c.get("calendar")
         if not cal:
             continue
         blocks[f"circuit-{key}"] = {
-            "type": "jsonld",
+            "type": cal.get("type", "jsonld"),
             "series": cal.get("series", c["label"].upper()),
             "championship": c.get("name", c["label"]),
             "discipline": cal.get("discipline", "Circuit event"),
             "tz": c["tz"], "geo": c.get("geo"), "location": c.get("location", c["label"]),
             "extra_labels": [c["label"]],
-            **{k: v for k, v in cal.items() if k not in ("series", "discipline")},
+            **{k: v for k, v in cal.items() if k not in ("series", "discipline", "type")},
         }
     return blocks
 

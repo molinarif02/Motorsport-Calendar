@@ -212,3 +212,66 @@ def test_gtopen_parses_next_race_pdf_and_keeps_it(tmp_path, monkeypatch):
     monkeypatch.setattr(gtopen, "parse_next_race", lambda html: None)
     again = _make(gtopen.GtOpenCollector, GTO, tmp_path).collect(2026)
     assert {s.name for s in again if s.event_name == "Barcelona"} == set(bcn)
+
+
+# ---- WRC --------------------------------------------------------------------------
+WRC = {
+    "/seasons.json": "wrc/seasons.json",
+    "season-detail.json?seasonId=47": "wrc/season-detail-47.json",
+    "season-detail.json?seasonId=50": "wrc/season-detail-50.json",
+    "/events/635/itineraries/1359.json": "wrc/itinerary-635-1359.json",
+    "/events/635.json": "wrc/event-635.json",
+    "/events/698/itineraries/1501.json": "wrc/itinerary-698-1501.json",
+    "/events/698.json": "wrc/event-698.json",
+}
+
+
+def test_wrc_stages_from_live_api(tmp_path):
+    from mscal.collectors.wrc import WrcCollector
+
+    out = _make(WrcCollector, WRC, tmp_path).collect(2026)
+    mc = {s.name.split(" ")[0]: s for s in out if s.event_name == "Rallye Monte Carlo"}
+    assert set(mc) == {"SS1", "SS2", "SS3", "SS4", "SS5"}
+    ss1 = mc["SS1"]
+    assert ss1.session_type == SessionType.STAGE and ss1.tz == "Europe/Monaco"
+    assert ss1.start.isoformat() == "2026-01-22T16:05:00+01:00"
+    assert ss1.name == "SS1 Toudon / Saint-Antonin (21.9 km)"
+    assert ss1.location == "Stage start: Toudon, Monaco"
+    assert mc["SS5"].start.isoformat() == "2026-01-23T10:32:00+01:00"
+    # Sweden: event page not captured (404) -> placeholder over the event dates
+    se = [s for s in out if s.event_name == "Rally Sweden"]
+    assert len(se) == 1 and se[0].session_type == SessionType.EVENT and se[0].tz == "Europe/Stockholm"
+    assert (str(se[0].start), str(se[0].end)) == ("2026-02-12", "2026-02-16")
+
+
+def test_wrc_unpublished_itinerary_and_placeholder_timezone(tmp_path):
+    from mscal.collectors.wrc import WrcCollector
+
+    out = _make(WrcCollector, WRC, tmp_path).collect(2027)
+    (mc,) = out
+    assert mc.session_type == SessionType.EVENT
+    # the API says "AUS Eastern Standard Time" for this unpublished rally: not trusted
+    assert mc.tz == "Europe/Monaco"
+    assert (str(mc.start), str(mc.end)) == ("2027-01-21", "2027-01-25")
+
+
+# ---- Monza (The Events Calendar REST API) -----------------------------------------
+def test_monza_races_from_tribe_api(tmp_path):
+    import yaml
+
+    from mscal import main as M
+    from mscal.collectors.tribe import TribeEventsCollector
+
+    cfg = yaml.safe_load(Path("config/config.yaml").read_text())
+    block = {**M._circuit_collectors(cfg)["circuit-monza"]}
+    assert block["type"] == "tribe" and block["categories"] == ["gare"]
+    c = _make(TribeEventsCollector, {"monzanet.it/wp-json": "monza_tribe_gare_2026.json"}, tmp_path, **block)
+    out = {s.name: s for s in c.collect(2026)}
+    assert len(out) == 12
+    wec = out["6 Hours of Monza – FIA World Endurance Championship"]           # entities decoded
+    assert wec.series == "WEC" and wec.all_day and "Monza" in wec.categories()
+    assert (str(wec.start), str(wec.end)) == ("2026-11-06", "2026-11-09")
+    assert out["Formula 1 Pirelli Gran Premio d’Italia"].series == "F1"
+    assert out["International GT Open"].series == "GTOPEN"
+    assert out["Monza Revival"].series == "MONZA"
+    assert wec.geo == (45.6156, 9.2811)

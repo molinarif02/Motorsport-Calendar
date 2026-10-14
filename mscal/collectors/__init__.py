@@ -14,6 +14,7 @@ driftmasters Drift Masters (dm.gp JSON API)
 formuladrift Formula DRIFT (formulad.com)
 gtopen     International GT Open (gtopen.gtsport.es + schedule PDF)
 jsonld     schema.org events scraped from a web page (circuit calendars)
+tribe      WordPress "The Events Calendar" REST API (circuit calendars, e.g. Monza)
 manual     hand-written sessions from manual.yaml
 =========  ==============================================================
 
@@ -29,6 +30,7 @@ from .imsa import ImsaCollector
 from .jsonld import JsonLdCollector
 from .manual import ManualCollector
 from .motocal import MotocalCollector
+from .tribe import TribeEventsCollector
 from .wrc import WrcCollector
 
 TYPES: dict[str, type[Collector]] = {
@@ -40,6 +42,7 @@ TYPES: dict[str, type[Collector]] = {
     "formuladrift": FormulaDriftCollector,
     "gtopen": GtOpenCollector,
     "jsonld": JsonLdCollector,
+    "tribe": TribeEventsCollector,
     "manual": ManualCollector,
 }
 

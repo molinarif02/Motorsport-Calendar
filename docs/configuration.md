@@ -51,7 +51,7 @@ block accepts these common keys:
 
 | key | |
 |---|---|
-| `type` | `motocal`, `wrc`, `creventic`, `imsa`, `driftmasters`, `formuladrift`, `gtopen`, `jsonld` or `manual` |
+| `type` | `motocal`, `wrc`, `creventic`, `imsa`, `driftmasters`, `formuladrift`, `gtopen`, `tribe`, `jsonld` or `manual` |
 | `enabled` | `false` to switch it off without deleting it |
 | `series` | short tag used in titles: `[WEC]` |
 | `championship` | full name, used as a label |
@@ -84,12 +84,11 @@ collectors:
 
 | key | default | |
 |---|---|---|
-| `season_url` | WRC active-season endpoint | list of rallies |
-| `results_api` | `https://api.wrc.com/results-api` | itinerary endpoint base |
-| `events` | none | pin rallies by hand: `[{id: 1234, name: Rally Japan, country: Japan}]` |
+| `api_base` | `https://p-p.redbull.com/rb-wrccom-lintegration-yv-prod/api` | wrc.com's results API |
+| `season_name` | `World Rally Championship` | season to read (e.g. `European Rally Championship`) |
 | `stage_window_minutes` | `90` | event length (the API has no stage end time) |
 | `include_shakedown` | `true` | |
-| `rally_timezones` | built-in table | extra or overriding `fragment: Area/City` entries, matched on event id, then rally name, then country |
+| `rally_timezones` | built-in table | fallback `fragment: Area/City` entries when the API's zone is missing or a placeholder |
 
 ### `type: creventic` (24H Series)
 
@@ -137,6 +136,15 @@ collectors:
 | `country_timezones` | built-in (EN/ES names) | `{country: zone}` overrides |
 | `session_types` | `[FP, QUALI, RACE]` | |
 
+### `type: tribe`
+
+| key | default | |
+|---|---|---|
+| `api` | required | `https://<site>/wp-json/tribe/events/v1/events` |
+| `categories` | all | category slugs to keep, e.g. `[gare]` |
+| `all_day` | `true` | all-day entries over the event dates (gate hours aren't sessions) |
+| `series_map`, `skip_regex`, `tz`, `location`, `geo`, `extra_labels` | | as for `jsonld` |
+
 ### `type: jsonld`
 
 This type reads schema.org `Event` / `SportsEvent` objects embedded as JSON-LD in web
@@ -177,7 +185,7 @@ scrape the circuit's own event list.
 | `tz` | `Europe/Rome` | |
 | `geo` | none | `[lat, lon]`. Replaces geocoded coordinates for matching sessions. |
 | `location` | label | address for scraped events |
-| `calendar` | none | `jsonld` options (`urls`, `follow_links_regex`, `series_map`, `series`, …) |
+| `calendar` | none | the circuit's own event list: `type: tribe` (WordPress events API) or `type: jsonld` (default), plus that type's options |
 
 ```yaml
 tracked_circuits:

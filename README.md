@@ -86,8 +86,8 @@ library supports. See [docs/configuration.md](docs/configuration.md) for all the
   Yvenou (MIT), used as a library.
 - The 24H Series, IMSA, Drift Masters, Formula DRIFT and GT Open come from the public
   pages of their official websites (GT Open's timetable from its schedule PDF).
-- WRC itineraries come from the public endpoints of the WRC live-timing service.
-  These endpoints are undocumented and may change.
+- WRC itineraries come from the API behind wrc.com's results pages, and Monza's events
+  from monzanet.it's public events API. These APIs are undocumented and may change.
 - Coordinates come from [OpenStreetMap Nominatim](https://nominatim.org) (© OpenStreetMap
   contributors, ODbL).
 - This project is not affiliated with the FIA, WRC Promoter, SRO, ACO, Dorna, or any

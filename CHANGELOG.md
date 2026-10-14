@@ -17,6 +17,11 @@
   Adds `pypdf`.
 - Stream channels checked against the official sites: `@GTOPENseries`,
   `@IMSAOfficial`, `user:24HSeries`, `@DriftMastersGrandPrix`.
+- WRC: switched to the API behind wrc.com's results pages (the old `api.wrc.com` is
+  gone). Uses the event's own timezone when it is plausible, with placeholders
+  detected. Unpublished rallies become date placeholders.
+- New collector `tribe` (WordPress "The Events Calendar" REST API). Monza now
+  reads monzanet.it's race category (12 races in 2026) instead of scraping pages.
 - `stale_max_days: 0` keeps a failing collector's data until each season is over.
 - `log_level` in config.yaml.
 - Streaming rules accept legacy YouTube usernames (`user:Name`).
