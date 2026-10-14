@@ -27,6 +27,8 @@ Docker Compose.
 - **Streaming links**: the exact YouTube live video when the channel has scheduled
   it, otherwise the channel's streams page, Rally.TV (WRC) or FIAWEC+ (WEC).
 - **GT and circuit series** are filtered to Free Practice, Qualifying and Race.
+- **Light on the Pi**: about 15 MB at rest. Each run is a short process that exits,
+  and sources with nothing coming up are re-fetched only every 12 h.
 - **Self-updating**: checks every 3 h, and every 30 min on race weekends. Changed
   sessions update in place (stable UIDs + `SEQUENCE`), and cancelled ones are marked.
 - **Robust**: a broken scraper keeps serving its last good data and is reported in

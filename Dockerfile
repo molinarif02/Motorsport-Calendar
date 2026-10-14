@@ -8,7 +8,6 @@ ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN python -m venv /venv
 COPY requirements.txt /tmp/
 RUN /venv/bin/pip install -r /tmp/requirements.txt \
- && find /venv -name '__pycache__' -prune -exec rm -rf {} + \
  && rm -rf /venv/lib/python3.14/site-packages/motorsport_calendar/gui
 
 FROM python:3.14-slim-trixie
@@ -18,7 +17,10 @@ COPY --from=build /venv /venv
 COPY mscal /app/mscal
 COPY LICENSE /app/LICENSE
 WORKDIR /app
-RUN useradd -u 10001 -M -s /usr/sbin/nologin mscal \
+# Precompile all bytecode once at build time: the container runs read-only and each run
+# is a short-lived process, so without this every run would recompile every module.
+RUN python -m compileall -q -j 0 /venv /app/mscal \
+ && useradd -u 10001 -M -s /usr/sbin/nologin mscal \
  && mkdir -p /data /www && chown mscal /data /www
 USER 10001
 # healthy = status.json rewritten within the last 7 hours

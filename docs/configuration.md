@@ -42,6 +42,7 @@ docker compose run --rm generator providers    # championships available to `mot
 | `interval_minutes` | `180` | normal time between runs |
 | `race_weekend_interval_minutes` | `30` | used when any session starts within the window |
 | `race_weekend_window_hours` | `72` | the window used above |
+| `idle_refresh_hours` | `12` | a source with no session running or starting inside the window (all-day placeholders: within 7 days) is re-fetched at most this often; its cached data is reused in between. A config change to that source forces a refresh. `0` = fetch everything on every run. |
 
 ## `collectors`
 

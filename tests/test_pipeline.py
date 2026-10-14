@@ -201,3 +201,38 @@ def test_failing_collector_serves_cache(env, monkeypatch):
     assert any(n.startswith("[WRC]") for n in ev), "WRC must survive a failing scraper"
     status = json.loads((tmp / "www" / "status.json").read_text())
     assert status["collectors"]["wrc"] == {**status["collectors"]["wrc"], "ok": False, "using_cache": True}
+
+
+def test_idle_sources_are_not_refetched(env, monkeypatch):
+    """Nothing coming up + refreshed recently -> reuse the cache, no network at all."""
+    cfg, tmp = env
+    cfg["schedule"] = {"race_weekend_window_hours": 1, "idle_refresh_hours": 12}
+    hits: list[str] = []
+    real = httpx._client.Client  # the fixture already replaced httpx.Client
+
+    def counting(request):
+        if not any(h in str(request.url) for h in ("youtube", "googleapis", "nominatim")):
+            hits.append(str(request.url))
+        return _transport(request)
+
+    monkeypatch.setattr(M.httpx, "Client", lambda **kw: real(transport=httpx.MockTransport(counting), **kw))
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    first = len(hits)
+    assert first > 0
+    _, before = _events(tmp / "www")
+
+    hits.clear()
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    status = json.loads((tmp / "www" / "status.json").read_text())
+    skipped = {n for n, c in status["collectors"].items() if c.get("skipped")}
+    assert {"wrc", "circuit-monza"} <= skipped                  # sessions are days away
+    assert not any("wrc" in u or "monzanet" in u for u in hits)  # ...so no requests for them
+    _, after = _events(tmp / "www")
+    assert set(after) == set(before)                             # same calendar from the cache
+    assert status["next_run_minutes"] > 0
+
+    # a config edit forces a refresh even inside the idle window
+    cfg["collectors"]["wrc"]["stage_window_minutes"] = 60
+    hits.clear()
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    assert any("/seasons.json" in u for u in hits)

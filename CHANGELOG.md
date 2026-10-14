@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.0 – 2026-10-14
+
+Lower resource use on the Raspberry Pi.
+
+- `run --loop` is now a standard-library-only supervisor (~15 MB idle, measured) that
+  starts a short-lived process per run, instead of a resident ~55–80 MB process.
+- Per-source refresh: sources with nothing running or starting soon are served
+  from cache for up to `schedule.idle_refresh_hours` (12), with no network requests.
+  Config edits force a refresh.
+- The image ships precompiled bytecode (the read-only container can't cache it).
+- Requests send standard `Accept`/`Accept-Language` headers. Failures for
+  next year's not-yet-published calendars are reported as notes, not errors.
+- Live check: IMSA is reported but not required (imsa.com returns 403 to GitHub's
+  datacenter IPs).
+
 ## 1.1.1 – 2026-10-14
 
 Maintenance: latest stable versions everywhere, all verified.

@@ -20,7 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}   # optional repo secret
-      CORE: wec gtwce wrc 24h imsa dm fd gtopen circuit-monza # these must succeed
+      # these must succeed; imsa.com rejects GitHub's datacenter IPs (403), so imsa is
+      # reported in the summary but not required here (it works from a home connection)
+      CORE: wec gtwce wrc 24h dm fd gtopen circuit-monza
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

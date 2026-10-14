@@ -29,9 +29,7 @@ import argparse
 import json
 import logging
 import os
-import signal
 import sys
-import time
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -46,7 +44,6 @@ from .state import State, atomic_write
 from .streams import StreamResolver
 
 log = logging.getLogger("mscal")
-_stop = False
 
 #: accepted values of ``log_level:`` in config.yaml (case-insensitive)
 LOG_LEVELS = {
@@ -138,31 +135,43 @@ def run_once(cfg: dict, data_dir: Path, out_dir: Path) -> list[Session]:
     """Run every collector once and publish the calendar. Returns the sessions."""
     state = State(data_dir)
     contact = cfg.get("contact", "admin@example.com")
-    http = httpx.Client(timeout=25, follow_redirects=True,
-                        headers={"User-Agent": f"motorsport-cal/1.0 (personal calendar; {contact})"})
+    http = httpx.Client(timeout=25, follow_redirects=True, headers={
+        # honest identification + the standard headers ordinary clients send
+        "User-Agent": f"motorsport-cal/1.2 (personal calendar; {contact})",
+        "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en;q=0.9",
+    })
     geo = Geocoder(http, state, enabled=cfg.get("geocoding", True))
     seasons = _seasons(cfg)
     status: dict[str, dict] = {}
     sessions: list[Session] = []
 
     for name, cls, ccfg in collector_specs(cfg):
+        fresh = _fresh_cache(state, name, ccfg, cfg)
+        if fresh is not None:  # nothing coming up and refreshed recently: reuse, no network
+            status[name] = {"ok": True, "sessions": len(fresh), "errors": [], "skipped": "fresh"}
+            sessions += fresh
+            continue
         ccfg = {**ccfg, "_cache_dir": str(data_dir / "http-cache")}
         collector = cls(name, ccfg, http, state, geo)
         got: list[Session] = []
-        errors = []
+        errors, notes = [], []
         for season in seasons:
             try:
                 got += collector.collect(season)
             except Exception as e:  # noqa: BLE001 - any scraper failure is non-fatal
-                errors.append(f"{season}: {type(e).__name__}: {e}")
+                msg = f"{season}: {type(e).__name__}: {e}"
+                # next year's calendar is often not published yet: that is not an error
+                (notes if season > date.today().year else errors).append(msg)
         # success = at least one season produced data (next year is often empty)
         if got:
             state.save_collector(name, got)
-            status[name] = {"ok": True, "sessions": len(got), "errors": errors}
+            state.kv_set("refreshed", name, _block_hash(ccfg))
+            status[name] = {"ok": True, "sessions": len(got), "errors": errors, "notes": notes}
         else:
             cached = state.load_collector(name, int(cfg.get("stale_max_days", 14)))
             got = cached or []
-            status[name] = {"ok": False, "sessions": len(got), "errors": errors,
+            status[name] = {"ok": False, "sessions": len(got), "errors": errors or notes,
                             "using_cache": cached is not None}
             log.error("collector %s failed (%s); using %d cached sessions", name, errors, len(got))
         sessions += got
@@ -180,12 +189,51 @@ def run_once(cfg: dict, data_dir: Path, out_dir: Path) -> list[Session]:
     else:
         log.info("no changes (%d events)", len(sessions))
     status_doc = {"generated": datetime.now(UTC).isoformat(), "events": len(sessions),
-                  "collectors": status}
+                  "next_run_minutes": _next_interval(cfg, sessions) // 60, "collectors": status}
     atomic_write(out_dir / "status.json", json.dumps(status_doc, indent=1))
     state.prune(datetime.now(UTC))
     state.flush()
     http.close()
     return sessions
+
+
+def _block_hash(ccfg: dict) -> str:
+    """Fingerprint of a collector's config, so a config edit forces a refresh."""
+    import hashlib
+    clean = {k: v for k, v in ccfg.items() if not k.startswith("_")}
+    return hashlib.sha1(json.dumps(clean, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def _fresh_cache(state: State, name: str, ccfg: dict, cfg: dict) -> list[Session] | None:
+    """Cached sessions to reuse instead of fetching, or None to fetch now.
+
+    A collector is skipped (zero network, almost zero CPU) when all of these hold:
+    it was refreshed successfully less than ``schedule.idle_refresh_hours`` ago (12),
+    its config block hasn't changed since, and none of its sessions is running or
+    starts within ``race_weekend_window_hours`` (all-day placeholders: within 7 days,
+    since timetables appear about a week before an event). Local sources (manual)
+    always run. ``idle_refresh_hours: 0`` disables skipping.
+    """
+    sched = cfg.get("schedule", {})
+    idle = float(sched.get("idle_refresh_hours", 12))
+    if idle <= 0 or ccfg.get("type") == "manual":
+        return None
+    if state.kv_get("refreshed", name, ttl=timedelta(hours=idle)) != _block_hash(ccfg):
+        return None
+    cached = state.load_collector(name, 0)
+    if not cached:
+        return None
+    now = datetime.now(UTC)
+    window = timedelta(hours=int(sched.get("race_weekend_window_hours", 72)))
+    for s in cached:
+        if s.all_day:
+            start = datetime.combine(s.start, datetime.min.time(), UTC)
+            end = datetime.combine(s.end, datetime.min.time(), UTC)
+            if start - timedelta(days=7) <= now <= end:
+                return None
+        elif s.start.astimezone(UTC) - window <= now <= s.end.astimezone(UTC):
+            return None
+    return cached
 
 
 def _seasons(cfg: dict) -> list[int]:
@@ -325,30 +373,16 @@ def main(argv: list[str] | None = None) -> int:
         print_providers(load())
         return 0
 
-    def _sigterm(*_):
-        global _stop
-        _stop = True
-    signal.signal(signal.SIGTERM, _sigterm)
-    signal.signal(signal.SIGINT, _sigterm)
+    if args.loop:  # long-lived loop: stdlib-only supervisor, one child process per run
+        from .supervisor import maybe_loop
+        return maybe_loop(sys.argv[1:] if argv is None else argv) or 0
 
-    while True:
-        sessions: list[Session] = []
-        try:
-            cfg = load()  # re-read every run: edits apply without a restart
-            sessions = run_once(cfg, Path(args.data), Path(args.out))
-        except Exception:
-            log.exception("run failed")
-            if not args.loop:
-                return 1
-            cfg = {}
-        if not args.loop:
-            return 0
-        wait = _next_interval(cfg, sessions)
-        log.info("next run in %d min", wait // 60)
-        for _ in range(wait):  # 1 s steps so SIGTERM stops the container promptly
-            if _stop:
-                return 0
-            time.sleep(1)
+    try:
+        run_once(load(), Path(args.data), Path(args.out))
+    except Exception:
+        log.exception("run failed")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
