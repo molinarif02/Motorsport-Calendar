@@ -208,9 +208,13 @@ def _publish_status_page(out_dir: Path) -> None:
 
 
 def _block_hash(ccfg: dict) -> str:
-    """Fingerprint of a collector's config, so a config edit forces a refresh."""
+    """Fingerprint of a collector's config and the app version, so a config edit or an
+    update (whose collectors may parse differently) forces a refresh."""
     import hashlib
+
+    from . import __version__
     clean = {k: v for k, v in ccfg.items() if not k.startswith("_")}
+    clean["_version"] = __version__
     return hashlib.sha1(json.dumps(clean, sort_keys=True, default=str).encode()).hexdigest()
 
 

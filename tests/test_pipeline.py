@@ -240,3 +240,13 @@ def test_idle_sources_are_not_refetched(env, monkeypatch):
     hits.clear()
     M.run_once(cfg, tmp / "data", tmp / "www")
     assert any("/seasons.json" in u for u in hits)
+
+    # an update (new app version) forces a refresh too: new code may parse differently
+    import mscal
+    hits.clear()
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    assert not any("/seasons.json" in u for u in hits)           # idle again
+    monkeypatch.setattr(mscal, "__version__", "99.0.0")
+    hits.clear()
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    assert any("/seasons.json" in u for u in hits)

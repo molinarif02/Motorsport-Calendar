@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.3.1 – 2026-10-19
+
+- After an update, every source is refreshed on the first run. Before, a source that
+  had been refreshed in the last 12 hours kept serving the previous version's
+  cached output until `idle_refresh_hours` ran out, so fixes (like GT Open's
+  per-round timetables) showed up only hours later. The app version is now part of
+  the refresh fingerprint, alongside the collector's config.
+- `CONFIG_DIR` in `.env` (e.g. `./config.local`, ignored by git) keeps your own
+  configuration out of `git pull`.
+- `scripts/check-tunnel-token.py` checks `TUNNEL_TOKEN` without printing it.
+
 ## 1.3.0 – 2026-10-19
 
 - New status page, `/status.html` (or `/status`): last and next run, event count,

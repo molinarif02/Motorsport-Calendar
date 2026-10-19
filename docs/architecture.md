@@ -54,8 +54,8 @@ people, and there are no credentials to manage.
   run happens in a child process that loads the collectors, works, and exits, so its
   memory (about 55–80 MB) is returned after every run.
 - **Fetch only what can change.** Before collecting, each source is checked:
-  if it was refreshed successfully within `idle_refresh_hours`, its config is
-  unchanged, and none of its sessions is running or starting soon, its cached
+  if it was refreshed successfully within `idle_refresh_hours`, its config and the
+  app version are unchanged, and none of its sessions is running or starting soon, its cached
   output is reused and no request is made. Race weekends stay fresh, and quiet
   weeks cost almost nothing. `status.json` marks such sources `"skipped": "fresh"`.
 - **Precompiled bytecode.** The image compiles all Python modules at build time. The
