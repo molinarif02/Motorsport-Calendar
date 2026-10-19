@@ -12,7 +12,10 @@ RUN /venv/bin/pip install -r /tmp/requirements.txt \
 
 FROM python:3.14-slim-trixie
 ENV PATH=/venv/bin:$PATH PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
-    MSCAL_CONFIG=/config/config.yaml MSCAL_DATA=/data MSCAL_OUT=/www
+    MSCAL_CONFIG=/config/config.yaml MSCAL_DATA=/data MSCAL_OUT=/www \
+    XDG_CACHE_HOME=/tmp/.cache
+# XDG_CACHE_HOME: safety net for library code that writes a default cache under $HOME
+# (read-only here); /tmp is a tmpfs in docker-compose.yml.
 COPY --from=build /venv /venv
 COPY mscal /app/mscal
 COPY LICENSE /app/LICENSE

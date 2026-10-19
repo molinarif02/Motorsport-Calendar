@@ -45,6 +45,17 @@ A scraper that breaks therefore never silently empties the calendar. Monitor
   becomes a new event.
 - `imsa` and `worldsbk` are registered upstream but have no working source in
   0.3.0. The `providers` command marks them as not being in the catalog.
+- Two upstream flaws in 0.3.0 are handled in the adapter:
+  - Some source factories (`wec`, `worldsbk`, `imsa`) ignore the cache they are
+    given and default to `~/.cache`, which is read-only in the container. The adapter
+    hands them `/data/http-cache/<provider>`. The image also sets
+    `XDG_CACHE_HOME=/tmp/.cache`, because the default cache is created when the
+    source is built.
+  - The SRO scraper (GTWC Europe/America/Asia, IGTC) ignores the year: it reads the
+    site's single `/calendar` page and stamps the requested year on its dates. A
+    season that is an exact copy of the previous one (same events on the same days)
+    is discarded, so the October next-season fetch doesn't create phantom events.
+    The real next-season calendar appears when the site publishes it.
 - To upgrade the library, bump `motorsport-calendar==` in `requirements.txt`, run
   the tests, and rebuild.
 

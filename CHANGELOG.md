@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.2 – 2026-10-19
+
+- Fix: WEC failed in the read-only container (`OSError: Read-only file system:
+  '/home/mscal'`). The upstream WEC source ignores the cache it is given and creates
+  one under `~/.cache`. The adapter now hands every source our cache in
+  `/data/http-cache`, and the image sets `XDG_CACHE_HOME=/tmp/.cache` (WorldSBK and
+  IMSA had the same flaw).
+- Fix: from October, the next-season fetch of GT World Challenge (and other SRO series)
+  returned this season's rounds re-dated a year later, which put phantom 2027 events in
+  the calendar. A season that is an exact copy of the previous one is now discarded.
+- Regression tests for both (fake upstream source that ignores the cache and the year).
+
 ## 1.2.1 – 2026-10-14
 
 - Drift Masters streams: the battles (Top 32/16/8) link to Red Bull Motorsports on

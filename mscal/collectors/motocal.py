@@ -97,6 +97,10 @@ class MotocalCollector(Collector):
 
     required = ("provider", "source", "series")
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._seen: dict[int, frozenset] = {}  # season -> fingerprint, see collect()
+
     @classmethod
     def defaults(cls, cfg: dict) -> dict:
         return dict(CATALOG.get(cfg.get("provider", ""), {}))
@@ -131,8 +135,25 @@ class MotocalCollector(Collector):
         cache = HttpCache(cache_dir=Path(self.cfg.get("_cache_dir", "/data/http-cache")) / pid,
                           ttl=int(self.cfg.get("http_cache_minutes", 50)) * 60)
         source = source_registry.get(pid, src)(cache, False)
+        # Some upstream factories ignore the cache argument (wec, worldsbk and imsa in
+        # 0.3.0: `lambda cache, refresh: OfficialWecSource()`), so the source falls back
+        # to ~/.cache, which is read-only in the container. Hand it ours.
+        if hasattr(source, "_cache") and source._cache is not cache:
+            source._cache = cache
         provider = registry.get(pid)(source)
         events = asyncio.run(provider.fetch_events(pid, season))
+
+        # Some sources ignore the year: the SRO scraper always reads the site's single
+        # /calendar page and stamps the dates with the requested year, so asking for
+        # next season returns this season's rounds moved a year on. A season that is
+        # an exact copy of the previous one (same events on the same days) is discarded.
+        fingerprint = frozenset((ev.name, s.start_datetime.month, s.start_datetime.day)
+                                for ev in events for s in ev.sessions)
+        if fingerprint and fingerprint == self._seen.get(season - 1):
+            log.info("%s: %d data is a copy of %d (source ignores the year); skipped",
+                     self.name, season, season - 1)
+            return []
+        self._seen[season] = fingerprint
 
         wanted = {SessionType(t) for t in self.cfg.get("session_types", ["FP", "QUALI", "RACE"])}
         out: list[Session] = []
