@@ -65,9 +65,26 @@ else returns 404.
 **Option A: Cloudflare Tunnel** (no port forwarding, no certificates to manage).
 
 1. In Cloudflare Zero Trust, go to *Networks → Tunnels → Create tunnel*
-   (cloudflared) and copy the token.
-2. Add a public hostname, e.g. `calendar.example.com`, with service `http://web:8080`.
-3. Put `TUNNEL_TOKEN=...` in `.env`, then run `docker compose --profile tunnel up -d`.
+   (cloudflared). The install page shows a command like
+   `docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJh…`.
+   Copy **only the token**: the long string after `--token`, starting with `eyJ`. You
+   don't run that command; the `tunnel` service in `docker-compose.yml` does the same.
+2. Add a public hostname, e.g. `calendar.example.com`, with service type **HTTP** and
+   URL `web:8080` (the nginx service, reached by name on the compose network).
+3. Put `TUNNEL_TOKEN=eyJh…` in `.env` (one line, no quotes), then run
+   `docker compose --profile tunnel up -d`.
+
+If the `tunnel` container keeps restarting with "Provided Tunnel token is not valid",
+the value in `.env` isn't the bare token. Check it without printing it:
+
+```bash
+python3 scripts/check-tunnel-token.py     # run next to docker-compose.yml
+```
+
+It reports a pasted `--token` or whole command, spaces, a Windows line ending, or
+duplicate `TUNNEL_TOKEN` lines, and prints the tunnel id when the token is valid. Then
+recreate the container so it reads the new value:
+`docker compose --profile tunnel up -d --force-recreate tunnel`.
 
 **Option B: your existing reverse proxy** (Caddy, Traefik, Nginx Proxy Manager…).
 Point it at `<pi>:8080`. For example, with Caddy:
