@@ -12,6 +12,9 @@
   A PDF is downloaded once, and again only when the site uploads a new version.
 - GT Open: races without a number (the Monza 500 km) and lengths like `2 h. 55´` are
   parsed, so the race is no longer missed.
+- CI: the test job could never import `mscal` (plain `pytest` doesn't add the
+  checkout to the import path), so CI had failed since 1.0.0 even though the tests
+  passed locally. Fixed with `pythonpath` in `pyproject.toml`.
 - Docs: iPhone subscriptions can be stored in iCloud (Account: iCloud), and an
   iCloud subscription needs a public URL.
 

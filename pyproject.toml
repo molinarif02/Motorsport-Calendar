@@ -42,6 +42,7 @@ mscal = ["static/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]          # plain `pytest` (as in CI) imports mscal from the checkout
 
 [tool.ruff]
 line-length = 110
