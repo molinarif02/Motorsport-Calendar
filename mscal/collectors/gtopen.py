@@ -7,19 +7,20 @@ Site structure (checked October 2026; Next.js + Payload CMS):
 * ``/calendario`` embeds the season in its Next.js flight payload
   (``self.__next_f.push([1, "..."])`` chunks) as ``"eventos": [...]``: per round
   ``nombre``, ``fecha`` (race day, UTC timestamp), ``tipo`` (sprint/endurance),
-  ``circuito.nombre`` and ``circuito.pais`` (sometimes in Spanish: "Bélgica").
-  Only those fields are read. (The payload also carries unrelated CMS data.)
-* The session timetable exists only as a PDF, linked from the homepage's
-  "NEXT RACE" box (``[class*=nextRace__title]``, ``[class*=nextRace__date]``
-  "25.10.2026", and an ``a[href$=.pdf]``). One table holds every GT Sport series
+  ``circuito.nombre`` and ``circuito.pais`` (sometimes in Spanish: "Bélgica"), and
+  ``docs``: the round's documents, ``[{nombre, doc: {title, filename, url,
+  updatedAt, id}}]``, among them the timetable ("Prov Schedule", "Schedule_prov";
+  a new upload replaces the old one). Only those fields are read.
+* The session timetable exists only as that PDF. One table holds every GT Sport series
   (GT Open, GT Cup, Euroformula, TCR): day headings
   "Friday/Viernes, 23 October / Octubre 2026" and rows
   "HH.MM/HH.MM  NN´  <series>  <session>", local track time. Race rows give only
   the start and the race length ("Rolling start - 70´"), and the series name may
   sit on the line just before or after the row.
-* Because only the next race's PDF is linked, sessions parsed from it are kept
-  per round in the state, so they stay in the calendar after the weekend. Other
-  rounds are all-day placeholders over the race weekend (Friday to race day).
+* Every round's PDF is parsed, and the result is kept per round in the state with
+  the document's id and upload time, so a PDF is downloaded once and again only
+  when the site uploads a new version. Rounds without a timetable yet are
+  all-day placeholders over the race weekend (Friday to race day).
 
 PDF text is read with pypdf (layout mode). Parsing is line-based and tolerant of
 the column order, but a PDF layout change is the most likely failure here.
@@ -32,8 +33,6 @@ import logging
 import re
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
-
-from bs4 import BeautifulSoup
 
 from ..models import Session, SessionType
 from .base import Collector, unique_names
@@ -90,7 +89,8 @@ class GtOpenCollector(Collector):
                   and not re.search(self.cfg.get("skip_regex") or "$^", e["name"], re.I)]
         if not rounds:
             raise RuntimeError(f"gtopen: no rounds for {season}")
-        self._refresh_next_race_schedule(base, rounds)
+        for ev in rounds:
+            self._refresh_schedule(ev)
         wanted = {SessionType(t) for t in self.cfg.get("session_types", ["FP", "QUALI", "RACE"])}
         out: list[Session] = []
         for ev in rounds:
@@ -114,32 +114,27 @@ class GtOpenCollector(Collector):
                                    end=day + timedelta(days=1), key=f"{ev['id']}|weekend"))
         return out
 
-    def _refresh_next_race_schedule(self, base: str, rounds: list[dict]) -> None:
-        """Parse the homepage's next-race PDF and remember its sessions per round."""
+    def _refresh_schedule(self, ev: dict) -> None:
+        """Parse the round's timetable PDF if it is new or was re-uploaded."""
+        doc = ev.get("schedule")
+        if not doc or self.state.kv_get("gtopen_schedule_version", ev["id"]) == doc["version"]:
+            return
+        series = self.cfg.get("series_name", "International GT Open")
         try:
-            home = self.http.get(f"{base}/")
-            home.raise_for_status()
-            nxt = parse_next_race(home.text)
-            if not nxt or not nxt.get("pdf"):
-                return
-            ev = next((e for e in rounds if e["circuit"].strip().lower() == nxt["venue"].lower()
-                       and e["race_day"] == nxt["date"]), None)
-            if ev is None:
-                log.info("gtopen: next race %s not in this season's list", nxt)
-                return
-            pdf = self.http.get(nxt["pdf"])
+            pdf = self.http.get(doc["url"])
             pdf.raise_for_status()
-            sessions = parse_schedule(pdf_to_text(pdf.content), ev["race_day"].year,
-                                      self.cfg.get("series_name", "International GT Open"))
-            if sessions:
-                self.state.kv_set("gtopen_schedule", ev["id"],
-                                  [[k.value, n, s.isoformat(), e.isoformat()] for k, n, s, e in sessions])
-                log.info("gtopen: %d sessions parsed for %s", len(sessions), ev["circuit"])
-            else:
-                log.warning("gtopen: schedule PDF for %s had no %s sessions (layout changed?)",
-                            ev["circuit"], self.cfg.get("series_name"))
-        except Exception as e:  # the season list still works without the PDF
-            log.warning("gtopen: next-race schedule unavailable: %s", e)
+            sessions = parse_schedule(pdf_to_text(pdf.content), ev["race_day"].year, series)
+        except Exception as e:  # keep what we had; the round falls back to a placeholder
+            log.warning("gtopen: schedule for %s unavailable: %s", ev["circuit"].strip(), e)
+            return
+        if sessions:
+            self.state.kv_set("gtopen_schedule", ev["id"],
+                              [[k.value, n, s.isoformat(), e.isoformat()] for k, n, s, e in sessions])
+            log.info("gtopen: %d sessions parsed for %s", len(sessions), ev["circuit"].strip())
+        else:
+            log.warning("gtopen: schedule PDF for %s had no %s sessions (layout changed?)",
+                        ev["circuit"].strip(), series)
+        self.state.kv_set("gtopen_schedule_version", ev["id"], doc["version"])
 
     def _tz(self, country: str) -> str:
         overrides = {k.lower(): v for k, v in (self.cfg.get("country_timezones") or {}).items()}
@@ -174,29 +169,28 @@ def parse_calendar(html: str) -> list[dict]:
             continue
         out.append({"id": ev.get("id", ""), "name": ev.get("nombre", ""), "race_day": day,
                     "type": ev.get("tipo", ""), "circuit": circuit.get("nombre", ""),
-                    "country": circuit.get("pais", "")})
+                    "country": circuit.get("pais", ""), "schedule": _schedule_doc(ev)})
     return out
 
 
-def parse_next_race(html: str) -> dict | None:
-    """Homepage -> {venue, date, pdf} of the "NEXT RACE" box."""
-    soup = BeautifulSoup(html, "lxml")
-    title = soup.select_one('[class*="nextRace__title"]')
-    when = soup.select_one('[class*="nextRace__date"]')
-    pdf = soup.select_one('[class*="nextRace"] a[href$=".pdf"]')
-    if not (title and when):
+def _schedule_doc(ev: dict) -> dict | None:
+    """The round's newest timetable document -> {url, version}, or None."""
+    found = []
+    for d in ev.get("docs") or []:
+        doc = d.get("doc") or {}
+        label = " ".join(str(x) for x in (d.get("nombre"), doc.get("title"), doc.get("filename")))
+        if doc.get("url") and re.search(r"schedule|horario", label, re.I):
+            found.append(doc)
+    if not found:
         return None
-    try:
-        day = datetime.strptime(when.get_text(strip=True), "%d.%m.%Y").date()
-    except ValueError:
-        return None
-    return {"venue": title.get_text(strip=True), "date": day, "pdf": pdf["href"] if pdf else None}
+    doc = max(found, key=lambda d: d.get("updatedAt") or "")
+    return {"url": doc["url"], "version": f"{doc.get('id')}@{doc.get('updatedAt')}"}
 
 
 def _classify(text: str) -> tuple[SessionType, str] | None:
-    m = re.search(r"Race\s*[–-]\s*(\d)", text)
+    m = re.match(r"Race\b(?:\s*[–-]\s*(\d))?", text)   # "Race – 1", or "Race" (Monza 500 km)
     if m:
-        return SessionType.RACE, f"Race {m.group(1)}"
+        return SessionType.RACE, f"Race {m.group(1)}" if m.group(1) else "Race"
     m = re.search(r"Qualifying\s*(\d)?", text)
     if m:
         return SessionType.QUALI, f"Qualifying {m.group(1)}" if m.group(1) else "Qualifying"
@@ -204,6 +198,15 @@ def _classify(text: str) -> tuple[SessionType, str] | None:
     if m:
         return SessionType.FP, f"Free Practice {m.group(1)}" + (" (Bronze)" if "bronze" in text.lower() else "")
     return None
+
+
+def _duration_minutes(text: str) -> int:
+    """Race length from "70´", "2 h. 55´" or "max. 2 h. 55´ + 1 lap" (default 60)."""
+    m = re.search(r"(\d+)\s*h\.?\s*(\d+)\s*´", text)
+    if m:
+        return int(m.group(1)) * 60 + int(m.group(2))
+    m = re.search(r"(\d+)\s*´", text)
+    return int(m.group(1)) if m else 60
 
 
 def _series_in(text: str) -> str | None:
@@ -240,8 +243,7 @@ def parse_schedule(text: str, year: int, series: str = "International GT Open") 
         if r.group(3):
             end = start.replace(hour=int(r.group(3)), minute=int(r.group(4)))
         else:
-            dur = re.search(r"(\d+)\s*´", rest)
-            end = start + timedelta(minutes=int(dur.group(1)) if dur else 60)
+            end = start + timedelta(minutes=_duration_minutes(rest))
         if end <= start:
             end += timedelta(days=1)
         out.append((kind[0], kind[1], start, end))

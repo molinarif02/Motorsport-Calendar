@@ -9,20 +9,27 @@ anyone.
 
 ## iCloud (Apple Calendar)
 
-Subscribe **once, from a Mac**. This is the only place where you choose both where
-the subscription lives and how often it refreshes.
+Store the subscription **in iCloud**. It then appears on your iPhone, iPad, Mac and
+iCloud.com, and stays updated on all of them. Subscribe once, from one device:
 
-1. Calendar → File → **New Calendar Subscription…** → paste the URL → Subscribe.
-2. Set **Location: iCloud**, so it appears on your iPhone, iPad and iCloud.com. You
-   can't change this later.
-3. Set **Auto-refresh** to every 15 minutes or every hour.
-4. If you enabled `alarm_minutes`, **untick "Remove: Alerts"**.
+- **iPhone / iPad**: Calendar → Calendars → Add Calendar → **Add Subscription
+  Calendar** → paste the URL → set **Account: iCloud** → Done. (Older iOS versions:
+  Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar, which
+  keeps it on that device only.)
+- **Mac**: Calendar → File → **New Calendar Subscription…** → paste the URL → set
+  **Location: iCloud**. Set **Auto-refresh** to every 15 minutes or every hour. If you
+  enabled `alarm_minutes`, **untick "Remove: Alerts"**.
 
-With only an iPhone or iPad: Settings → Calendar → Accounts → Add Account → Other →
-**Add Subscribed Calendar**. This works, but you can't pick the refresh interval, and
-the subscription stays on that device only.
+The location can't be changed later. Don't subscribe twice, or you'll see every
+event twice.
 
-Don't subscribe both ways, or you'll see every event twice.
+With the subscription in iCloud, the feed is fetched from outside your network, so
+the URL must be **publicly reachable** (for example through the Cloudflare tunnel, see
+[deployment.md](deployment.md)). A LAN address like `http://raspberrypi:8080` only works
+for a subscription kept "On My iPhone", and only while you're at home.
+
+The quickest way: open `https://<your-host>/status.html` on the device and tap
+**Subscribe**.
 
 ## Proton Calendar
 

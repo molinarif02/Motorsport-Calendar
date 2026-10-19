@@ -161,6 +161,10 @@ def test_full_run(env):
     status = json.loads((tmp / "www" / "status.json").read_text())
     assert all(c["ok"] for c in status["collectors"].values()), status
 
+    # the status page is published next to status.json and reads it
+    page = (tmp / "www" / "status.html").read_text()
+    assert 'fetch("status.json"' in page and "<script src" not in page   # self-contained
+
 
 def test_stable_uids_and_sequence_bump(env, monkeypatch):
     cfg, tmp = env

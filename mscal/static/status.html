@@ -1,0 +1,178 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later
+     Status page for the Motorsport feed. Reads status.json from the same folder,
+     re-reads it every minute. Self-contained: no external requests. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Motorsport feed status</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%227%22 fill=%22%23d7263d%22/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f6f4; --card: #ffffff; --text: #1d1d1f; --muted: #6e6e73; --line: #e3e3e0;
+    --ok: #1f8a4c; --ok-bg: #e6f4ec; --warn: #a15c00; --warn-bg: #fdf1dc;
+    --bad: #c4291c; --bad-bg: #fbe7e5; --idle: #4b5563; --idle-bg: #eceef1; --accent: #d7263d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111113; --card: #1c1c1f; --text: #f2f2f4; --muted: #9a9aa2; --line: #2c2c31;
+      --ok: #4cc584; --ok-bg: #16301f; --warn: #f0b04d; --warn-bg: #33270f;
+      --bad: #ff7a6e; --bad-bg: #3a1714; --idle: #b4bac4; --idle-bg: #26282d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  h1 span { color: var(--accent); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line);
+         background: var(--card); color: var(--text); text-decoration: none; font-size: 14px; cursor: pointer; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 20px 0; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .tile .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .tile .v { font-size: 22px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .tile .s { color: var(--muted); font-size: 13px; }
+  .banner { border-radius: 12px; padding: 10px 14px; margin: 0 0 16px; display: none; }
+  .banner.bad { display: block; background: var(--bad-bg); color: var(--bad); }
+  .banner.warn { display: block; background: var(--warn-bg); color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line);
+          border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+  .name { font-weight: 600; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill.ok { color: var(--ok); background: var(--ok-bg); }
+  .pill.idle { color: var(--idle); background: var(--idle-bg); }
+  .pill.warn { color: var(--warn); background: var(--warn-bg); }
+  .pill.bad { color: var(--bad); background: var(--bad-bg); }
+  .msg { font-size: 13px; color: var(--muted); margin-top: 4px; word-break: break-word; }
+  .msg.err { color: var(--bad); }
+  footer { color: var(--muted); font-size: 13px; margin-top: 16px; }
+  @media (max-width: 560px) {
+    thead { display: none; }
+    table, tbody, tr, td { display: block; width: 100%; }
+    tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+    td { border: 0; padding: 4px 12px; }
+    td.num { text-align: left; }
+    td.num::before { content: attr(data-k) " "; color: var(--muted); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span>●</span> Motorsport feed</h1>
+    <div class="actions">
+      <a class="btn primary" id="subscribe" href="motorsport.ics">Subscribe</a>
+      <button class="btn" id="copy" type="button">Copy feed URL</button>
+      <a class="btn" href="status.json">status.json</a>
+    </div>
+  </header>
+
+  <section class="summary">
+    <div class="tile"><div class="k">Last run</div><div class="v" id="gen">–</div><div class="s" id="gen-abs"></div></div>
+    <div class="tile"><div class="k">Next run</div><div class="v" id="next">–</div><div class="s" id="next-abs"></div></div>
+    <div class="tile"><div class="k">Events</div><div class="v" id="events">–</div><div class="s">in the calendar</div></div>
+    <div class="tile"><div class="k">Sources</div><div class="v" id="sources">–</div><div class="s" id="sources-s"></div></div>
+  </section>
+
+  <div class="banner" id="banner"></div>
+
+  <table>
+    <thead><tr><th>Source</th><th>State</th><th class="num">Sessions</th></tr></thead>
+    <tbody id="rows"><tr><td colspan="3">Loading…</td></tr></tbody>
+  </table>
+
+  <footer id="foot">Refreshes every minute.</footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtTime = (d) => d.toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short",
+                                                     hour: "2-digit", minute: "2-digit" });
+function ago(ms) {
+  const m = Math.round(ms / 60000);
+  if (Math.abs(m) < 1) return "just now";
+  const h = Math.floor(Math.abs(m) / 60), r = Math.abs(m) % 60;
+  const t = h ? `${h} h${r ? " " + r + " min" : ""}` : `${Math.abs(m)} min`;
+  return m > 0 ? `${t} ago` : `in ${t}`;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function state(c) {
+  if (!c.ok) return c.using_cache ? ["warn", "Failing · cached data"] : ["bad", "Failing"];
+  if (c.skipped === "fresh") return ["idle", "OK · from cache"];
+  if (c.errors && c.errors.length) return ["warn", "OK · partial"];
+  return ["ok", "OK · refreshed"];
+}
+
+// feed link: webcal:// opens the subscribe dialog on iPhone/Mac
+const feed = new URL("motorsport.ics", location.href);
+$("subscribe").href = "webcal://" + feed.host + feed.pathname;
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText(feed.href); $("copy").textContent = "Copied"; }
+  catch { prompt("Feed URL", feed.href); }
+  setTimeout(() => ($("copy").textContent = "Copy feed URL"), 1500);
+};
+
+let data = null;
+function render() {
+  if (!data) return;
+  const now = Date.now(), gen = new Date(data.generated);
+  $("gen").textContent = ago(now - gen);
+  $("gen-abs").textContent = fmtTime(gen);
+  if (data.next_run_minutes != null) {
+    const next = new Date(gen.getTime() + data.next_run_minutes * 60000);
+    $("next").textContent = next < now ? "due" : ago(now - next);
+    $("next-abs").textContent = `${fmtTime(next)} · every ${data.next_run_minutes} min`;
+  }
+  $("events").textContent = data.events;
+
+  const cols = Object.entries(data.collectors || {});
+  const failing = cols.filter(([, c]) => !c.ok);
+  $("sources").textContent = `${cols.length - failing.length}/${cols.length}`;
+  $("sources-s").textContent = failing.length ? `${failing.length} failing` : "all working";
+
+  const stale = now - gen > 7 * 3600e3;   // same threshold as the container health check
+  const b = $("banner");
+  b.className = "banner" + (stale ? " bad" : failing.length ? " warn" : "");
+  b.textContent = stale ? "The generator hasn't run for over 7 hours. Check: docker compose logs generator"
+                : failing.length ? `Failing: ${failing.map(([n]) => n).join(", ")}. Details below.` : "";
+
+  $("rows").innerHTML = cols.map(([name, c]) => {
+    const [cls, label] = state(c);
+    const msgs = [...(c.errors || []).map((e) => `<div class="msg err">${esc(e)}</div>`),
+                  ...(c.notes || []).map((e) => `<div class="msg">${esc(e)}</div>`)].join("");
+    return `<tr><td><div class="name">${esc(name)}</div>${msgs}</td>
+              <td><span class="pill ${cls}">${label}</span></td>
+              <td class="num" data-k="Sessions:">${c.sessions}</td></tr>`;
+  }).join("");
+}
+
+async function load() {
+  try {
+    const r = await fetch("status.json", { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    data = await r.json();
+    $("foot").textContent = "Refreshes every minute.";
+  } catch (e) {
+    $("foot").textContent = `Couldn't load status.json (${e.message}); retrying.`;
+  }
+  render();
+}
+load();
+setInterval(load, 60000);
+setInterval(render, 15000);   // keep the "ago" times moving between loads
+</script>
+</body>
+</html>

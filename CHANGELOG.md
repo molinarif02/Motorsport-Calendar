@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.0 – 2026-10-19
+
+- New status page, `/status.html` (or `/status`): last and next run, event count,
+  each source's state with its errors and notes, and a Subscribe (webcal) button.
+  Self-contained, light and dark, refreshes every minute. The generator publishes
+  it next to `status.json`, and nginx serves it with a strict CSP.
+- GT Open: every round now gets its sessions (FP, qualifying, races), read from that
+  round's own timetable PDF on gtopen.gtsport.es. Before, only the next race's PDF
+  was read, so on a fresh install every round was an all-day weekend placeholder.
+  A PDF is downloaded once, and again only when the site uploads a new version.
+- GT Open: races without a number (the Monza 500 km) and lengths like `2 h. 55´` are
+  parsed, so the race is no longer missed.
+- Docs: iPhone subscriptions can be stored in iCloud (Account: iCloud), and an
+  iCloud subscription needs a public URL.
+
 ## 1.2.2 – 2026-10-19
 
 - Fix: WEC failed in the read-only container (`OSError: Read-only file system:

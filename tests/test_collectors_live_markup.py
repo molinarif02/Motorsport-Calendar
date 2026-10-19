@@ -175,17 +175,16 @@ def test_formuladrift_round(tmp_path):
 
 
 # ---- International GT Open --------------------------------------------------------
-GTO = {
-    "BARCELONA%202026%20schedule": "gto_schedule_barcelona_2026.txt",   # served as the "PDF"
+GTO = {   # PDFs are served as their extracted text (pdf_to_text is bypassed below)
+    "BARCELONA%202026%20schedule": "gto_schedule_barcelona_2026.txt",
+    "MONZA%202026%20schedule": "gto_schedule_monza_2026.txt",
     "/calendario": "gto_calendario_2026.html",
-    "gtopen.gtsport.es/": "gto_home_2026.html",
 }
 
 
-def test_gtopen_parses_next_race_pdf_and_keeps_it(tmp_path, monkeypatch):
+def test_gtopen_reads_every_rounds_schedule_pdf(tmp_path, monkeypatch):
     from mscal.collectors import gtopen
 
-    # the fixture is the PDF's extracted text; skip the PDF decoding step
     monkeypatch.setattr(gtopen, "pdf_to_text", lambda content: content.decode())
     c = _make(gtopen.GtOpenCollector, GTO, tmp_path)
     out = c.collect(2026)
@@ -202,17 +201,36 @@ def test_gtopen_parses_next_race_pdf_and_keeps_it(tmp_path, monkeypatch):
     assert bcn["Free Practice 1"].session_type == SessionType.FP
     assert "Private test" not in " ".join(bcn)
 
-    # other rounds: weekend placeholders; the winter test is skipped by default
+    # a past round, from its own PDF: the endurance race has no number and lasts "2 h. 55´"
+    mza = {s.name: s for s in out if s.event_name == "Monza"}
+    assert set(mza) == {"Free Practice 1", "Free Practice 2", "Free Practice 3 (Bronze)",
+                        "Qualifying 1", "Qualifying 2", "Race"}
+    race = mza["Race"]
+    assert (race.session_type, race.start.isoformat(), race.end.strftime("%H:%M")) == \
+        (SessionType.RACE, "2026-09-27T12:30:00+02:00", "15:25")
+    assert mza["Free Practice 1"].start.strftime("%a %H:%M") == "Fri 11:20"
+
+    # no timetable published: a weekend placeholder; the winter test is skipped by default
     spa = [s for s in out if s.event_name == "Spa-Francorchamps"]
-    assert len(spa) == 1 and spa[0].tz == "Europe/Brussels"                  # "Bélgica"
-    assert (str(spa[0].start), str(spa[0].end)) == ("2026-05-15", "2026-05-18")
+    assert len(spa) == 1 and spa[0].session_type == SessionType.EVENT and spa[0].tz == "Europe/Brussels"
+    assert (str(spa[0].start), str(spa[0].end)) == ("2026-05-15", "2026-05-18")   # Fri..Sun
     assert not any("Winter" in s.event_name for s in out)
 
-    # after the weekend the homepage links another race: Barcelona keeps its sessions
+    # next run: same document versions -> no PDF downloads, sessions come from the state
     c.state.flush()  # the runner saves state at the end of every run
-    monkeypatch.setattr(gtopen, "parse_next_race", lambda html: None)
-    again = _make(gtopen.GtOpenCollector, GTO, tmp_path).collect(2026)
-    assert {s.name for s in again if s.event_name == "Barcelona"} == set(bcn)
+    fetched = []
+    c2 = _make(gtopen.GtOpenCollector, GTO, tmp_path)
+    send = c2.http.send
+    c2.http.send = lambda req, **kw: (fetched.append(str(req.url)), send(req, **kw))[1]
+    again = c2.collect(2026)
+    assert not [u for u in fetched if u.endswith(".pdf")]
+    assert {s.name for s in again if s.event_name == "Monza"} == set(mza)
+
+    # a re-uploaded timetable (new updatedAt) is downloaded and parsed again
+    c2.state.kv_set("gtopen_schedule_version", "68f60fdc8fd6a660b953d4af", "older")
+    fetched.clear()
+    c2.collect(2026)
+    assert [u for u in fetched if "MONZA" in u]
 
 
 # ---- WRC --------------------------------------------------------------------------

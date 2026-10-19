@@ -61,7 +61,7 @@ collectors:
   fd:
     type: formuladrift              # Formula DRIFT, from formulad.com
   gtopen:
-    type: gtopen                    # International GT Open: calendar + next-race schedule PDF
+    type: gtopen                    # International GT Open: calendar + each round's schedule PDF
     # skip_regex: "\\btest\\b"        # rounds to ignore (default: tests)
   manual:
     type: manual

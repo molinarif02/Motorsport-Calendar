@@ -31,6 +31,7 @@ import logging
 import os
 import sys
 from datetime import UTC, date, datetime, timedelta
+from importlib import resources
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -137,7 +138,7 @@ def run_once(cfg: dict, data_dir: Path, out_dir: Path) -> list[Session]:
     contact = cfg.get("contact", "admin@example.com")
     http = httpx.Client(timeout=25, follow_redirects=True, headers={
         # honest identification + the standard headers ordinary clients send
-        "User-Agent": f"motorsport-cal/1.2 (personal calendar; {contact})",
+        "User-Agent": f"motorsport-cal/1.3 (personal calendar; {contact})",
         "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "en;q=0.9",
     })
@@ -191,10 +192,19 @@ def run_once(cfg: dict, data_dir: Path, out_dir: Path) -> list[Session]:
     status_doc = {"generated": datetime.now(UTC).isoformat(), "events": len(sessions),
                   "next_run_minutes": _next_interval(cfg, sessions) // 60, "collectors": status}
     atomic_write(out_dir / "status.json", json.dumps(status_doc, indent=1))
+    _publish_status_page(out_dir)
     state.prune(datetime.now(UTC))
     state.flush()
     http.close()
     return sessions
+
+
+def _publish_status_page(out_dir: Path) -> None:
+    """Copy the bundled status.html (a viewer for status.json) next to the feed."""
+    page = (resources.files("mscal") / "static" / "status.html").read_bytes()
+    target = out_dir / "status.html"
+    if not target.exists() or target.read_bytes() != page:
+        atomic_write(target, page)
 
 
 def _block_hash(ccfg: dict) -> str:

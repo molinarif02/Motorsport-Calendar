@@ -32,7 +32,7 @@ Docker Compose.
 - **Self-updating**: checks every 3 h, and every 30 min on race weekends. Changed
   sessions update in place (stable UIDs + `SEQUENCE`), and cancelled ones are marked.
 - **Robust**: a broken scraper keeps serving its last good data and is reported in
-  `status.json`.
+  `status.json`, which you can read as a page at `/status.html`.
 - **Configurable**: enable MotoGP / Moto2 / Moto3, GT World Challenge America and
   Asia, IGTC, ELMS, F1 and more with one line each, and track additional circuits.
 - **Small**: about 50 MB of dependencies on python:3.14-slim (Debian 13, arm64 and amd64), and a
@@ -48,7 +48,7 @@ echo "YOUTUBE_API_KEY=" > .env                       # optional, see docs/stream
 docker compose pull || docker compose build          # prebuilt image from GHCR, or build locally
 docker compose run --rm generator validate           # check the config offline
 docker compose up -d
-curl -s localhost:8080/status.json
+curl -s localhost:8080/status.json                   # or open http://<pi>:8080/status.html
 ```
 
 Then make `http://<pi>:8080/motorsport.ics` reachable over HTTPS (for example with

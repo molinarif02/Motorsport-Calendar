@@ -6,7 +6,7 @@ It also runs on any Docker or Podman host.
 | service | image | role | memory cap |
 |---|---|---|---|
 | `generator` | `ghcr.io/molinarif02/motorsport-calendar` (or built locally) | ~15 MB idle supervisor; a short-lived run process (~55–80 MB) every 30 min–3 h | 256 MB cap |
-| `web` | `nginx:1.30-alpine` | serves `/motorsport.ics` and `/status.json` on `:8080` | 32 MB |
+| `web` | `nginx:1.30-alpine` | serves `/motorsport.ics`, `/status.json` and `/status.html` on `:8080` | 32 MB |
 | `tunnel` (profile) | `cloudflare/cloudflared:2026.10.0` | optional public HTTPS without opening ports | 64 MB |
 
 Volumes:
@@ -95,6 +95,9 @@ no duplicates.
 
 - The container health check fails if `status.json` hasn't been rewritten in 7 hours
   (`docker ps` shows `unhealthy`).
+- `https://<host>/status.html` (or `/status`) shows the same report as a page: last and
+  next run, events, and each source's state with its errors. It has a Subscribe button
+  too. It is published by the generator, and refreshes every minute.
 - `https://<host>/status.json` reports per-collector health, and suits an Uptime Kuma
   JSON-query monitor, for example on `collectors.wrc.ok == true`.
 - Logs: `docker compose logs generator`. They are rotated at 2 × 2 MB.

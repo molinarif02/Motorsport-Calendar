@@ -11,7 +11,7 @@ A collector turns one data source into `Session` objects (see
 | `imsa` | `mscal/collectors/imsa.py` | imsa.com season pages + event schedules (HTML) | site markup, checked 2026-10 |
 | `driftmasters` | `mscal/collectors/driftmasters.py` | dm.gp season page + the site's own JSON API (timetable, streams) | site markup/API, checked 2026-10 |
 | `formuladrift` | `mscal/collectors/formuladrift.py` | formulad.com schedule + round pages (HTML) | site markup, checked 2026-10 |
-| `gtopen` | `mscal/collectors/gtopen.py` | gtopen.gtsport.es calendar (Next.js payload) + next-race schedule PDF | PDF layout is the weak point |
+| `gtopen` | `mscal/collectors/gtopen.py` | gtopen.gtsport.es calendar (Next.js payload) + each round's schedule PDF | PDF layout is the weak point |
 | `jsonld` | `mscal/collectors/jsonld.py` | schema.org events embedded in web pages | depends on each site's markup |
 | `tribe` | `mscal/collectors/tribe.py` | WordPress "The Events Calendar" REST API (Monza) | API checked 2026-10 |
 | `manual` | `mscal/collectors/manual.py` | `config/manual.yaml` | exactly as good as what you type |
@@ -125,12 +125,15 @@ A scraper that breaks therefore never silently empties the calendar. Monitor
 ### gtopen
 
 - The season comes from the calendar JSON embedded in `/calendario`.
-- Session times exist only in the PDF linked from the homepage's "next race" box,
-  which mixes every GT Sport series. The parser keeps rows labelled
+- Session times exist only in each round's timetable PDF ("Prov Schedule" in the
+  round's `docs`), which mixes every GT Sport series. The parser keeps rows labelled
   `series_name` (default `International GT Open`). For race rows that carry the
   series name on the neighbouring line, it looks at that line instead.
-- Parsed sessions are stored per round, so they stay in the calendar after the
-  weekend. Other rounds are Friday-to-race-day placeholders.
+- Race rows with or without a number ("Race – 1", or "Race" for the Monza 500 km)
+  are recognised. Lengths like `70´` or `2 h. 55´` set the end time.
+- Parsed sessions are stored per round with the document's id and upload time. A
+  PDF is downloaded once, and again only when the site uploads a new version. Rounds
+  with no timetable yet are Friday-to-race-day all-day placeholders.
 - Rounds matching `skip_regex` (default: tests) are ignored.
 - If the PDF layout changes, the log says "had no International GT Open sessions",
   and the round falls back to its placeholder.
