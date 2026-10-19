@@ -15,7 +15,8 @@ services:
       TZ: Europe/Rome                       # log timestamps only; events carry their own zones
       YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-} # optional (docs/streaming.md)
     volumes:
-      - ./config:/config:ro                 # config.yaml + manual.yaml, editable on the host
+      - ${CONFIG_DIR:-./config}:/config:ro  # config.yaml + manual.yaml; set CONFIG_DIR=./config.local
+                                            # in .env to keep yours out of git (survives git pull)
       - data:/data                          # state: revisions, last-good output, caches
       - www:/www                            # published motorsport.ics + status.json
     mem_limit: 256m

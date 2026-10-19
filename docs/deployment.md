@@ -104,8 +104,17 @@ git pull
 docker compose pull && docker compose up -d     # or: docker compose up -d --build
 ```
 
-Your `config/` edits survive `git pull` unless the same lines changed upstream; git
-tells you if they did. The calendar keeps its UIDs across updates, so subscribers see
+Keep your own configuration in `config.local/`, which git ignores, so `git pull` never
+touches it:
+
+```bash
+mkdir -p config.local && cp config/config.yaml config/manual.yaml config.local/
+echo "CONFIG_DIR=./config.local" >> .env
+docker compose up -d
+```
+
+`config/` then stays the shipped example, which is useful for spotting new options
+after an update (`diff config/config.yaml config.local/config.yaml`). The calendar keeps its UIDs across updates, so subscribers see
 no duplicates.
 
 ## Monitoring
