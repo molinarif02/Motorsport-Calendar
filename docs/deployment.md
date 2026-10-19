@@ -102,7 +102,13 @@ Your subscription URL is then `https://calendar.example.com/motorsport.ics`.
 ```bash
 git pull
 docker compose pull && docker compose up -d     # or: docker compose up -d --build
+docker compose up -d --force-recreate web       # picks up a changed nginx.conf
 ```
+
+`nginx.conf` is bind-mounted from the repo, and `docker compose up -d` doesn't recreate
+`web` when only that file changed. A single-file bind mount also keeps pointing at the
+old file after `git pull` replaces it. Recreating `web` takes a second, and is harmless
+when nothing changed.
 
 Keep your own configuration in `config.local/`, which git ignores, so `git pull` never
 touches it:
