@@ -379,7 +379,9 @@ def test_spa_races_from_circuit_site(tmp_path):
             return httpx.Response(200, text=(FIX / "spa/list.html").read_text())
         m = __import__("re").search(r"/events/race/(\d+)_", url)
         if m:
-            return httpx.Response(200, text=(FIX / f"spa/race-{m.group(1)}.html").read_text(newline=""))
+            # newline="" keeps the page's CRLFs and raw newline as served (open(): 3.12-compatible)
+            with open(FIX / f"spa/race-{m.group(1)}.html", newline="") as f:
+                return httpx.Response(200, text=f.read())
         return httpx.Response(404)
 
     http = httpx.Client(transport=httpx.MockTransport(handler))
