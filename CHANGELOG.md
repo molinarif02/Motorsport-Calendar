@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.1 – 2026-10-24
+
+- `jsonld` reader: accepts JSON-LD with raw line breaks inside strings (it used to
+  skip such blocks silently and find nothing), and treats midnight-to-midnight ranges as
+  all-day dates with the end day included (it used to drop the last day). Both found on
+  spa-francorchamps.be, which now works as a tracked circuit calendar (races only).
+- Docs: which circuits have a readable event list, a Spa example, and a warning against
+  copying one circuit's `calendar:` block to another.
+
 ## 1.4.0 – 2026-10-24
 
 - Per-championship calendars: besides `motorsport.ics`, each run writes

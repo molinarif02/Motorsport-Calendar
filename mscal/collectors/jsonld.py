@@ -9,6 +9,9 @@ and usable directly as ``type: jsonld`` for any site without a dedicated parser.
 Many event/CMS sites embed <script type="application/ld+json"> blocks with
 {"@type": "Event" | "SportsEvent", "name", "startDate", "endDate", "location", "subEvent"}.
 Date-only entries become all-day "EVENT" placeholders; timed ones keep their times.
+Midnight-to-midnight ranges ("2026-10-02T00:00:00+02:00" .. "2026-10-04T00:00:00+02:00",
+as spa-francorchamps.be writes them) are dates too, with the end day included.
+Blocks with raw line breaks inside strings (also Spa) are accepted.
 
 cfg:
   urls: [listing page, ...]
@@ -77,6 +80,8 @@ class JsonLdCollector(Collector):
         tz = ZoneInfo(tzname)
         start, timed = _parse(ev["startDate"], tz)
         end, _ = _parse(ev.get("endDate") or ev["startDate"], tz)
+        if timed and start.time() == end.time() == datetime.min.time():
+            timed = False   # midnight to midnight: a date range, end day included
         if start.year != season:
             return []
         series = self.series
@@ -106,7 +111,8 @@ def _ld_objects(html: str):
     """Yield every parseable JSON-LD block of a page (invalid blocks are skipped)."""
     for block in _LD.findall(html):
         try:
-            yield json.loads(block.strip())
+            # strict=False: some CMSs emit raw newlines inside strings (invalid, but common)
+            yield json.loads(block.strip(), strict=False)
         except json.JSONDecodeError:
             continue
 

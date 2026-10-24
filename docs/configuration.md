@@ -186,8 +186,9 @@ also use it directly.
 | `extra_labels` | `[]` | labels added to every event |
 | `fail_if_empty` | `true` | treat "nothing found" as a failure, which keeps the cached data |
 
-Events that have only dates become all-day `[Event]` entries. Events with times keep
-them.
+Events that have only dates become all-day `[Event]` entries, and so do
+midnight-to-midnight ranges (`…T00:00:00` to `…T00:00:00`, end day included). Events with
+times keep them. JSON-LD with raw line breaks inside strings is accepted.
 
 ### `type: manual`
 
@@ -220,7 +221,34 @@ tracked_circuits:
 ```
 
 Keep `match` words specific. A word that is too short can match unrelated event
-names, which is why `spa-francorchamps` is safer than `spa`.
+names, which is why `francorchamps` is safer than `spa` (which also matches "Spain").
+
+**Circuits with a readable event list** (checked October 2026):
+
+| circuit | `calendar:` | notes |
+|---|---|---|
+| Monza | `type: tribe`, `api: https://www.monzanet.it/wp-json/tribe/events/v1/events`, `categories: [gare]` | WordPress events API; `gare` = races |
+| Spa-Francorchamps | `type: jsonld`, see below | race pages carry schema.org `Event` data; trackdays are skipped by URL |
+| Nürburgring | none | no structured data or feed (circuit or NLS site): use [manual events](#manual-events) |
+
+```yaml
+  spa:
+    label: Spa-Francorchamps
+    match: [francorchamps, "hours of spa"]
+    tz: Europe/Brussels
+    geo: [50.4372, 5.9714]
+    location: Circuit de Spa-Francorchamps, Route du Circuit 55, 4970 Stavelot, Belgium
+    calendar:
+      type: jsonld
+      urls: ["https://www.spa-francorchamps.be/en/events/event/list?displayType=List&pageIndex=1&pageSize=12"]
+      follow_links_regex: '/en/events/race/\d+_'   # races only
+      series: SPA
+      fail_if_empty: false
+      series_map: {"FIA WEC|6 Hours of Spa": WEC, "24 Hours of Spa": GTWCE, "Formula 1|Belgian Grand Prix": F1}
+```
+
+Each `calendar:` block must point at **that circuit's own** site. Copying Monza's block
+to another circuit would label Monza's races as that circuit's.
 
 ## `streaming`
 

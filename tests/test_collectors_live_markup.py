@@ -348,3 +348,54 @@ def test_driftmasters_battles_use_red_bull_motorsports_rule(tmp_path):
     # one "Qualifying" stream per day on dm.gp covers both qualifying sessions
     assert r7["Qualification Round 7 – 2nd Session"].stream_url == "https://www.youtube.com/watch?v=vPhV55wK1JA"
     assert r7["TOP 8 Battles"].stream_label == "Red Bull Motorsports (YouTube)"
+
+
+# ---- Spa-Francorchamps circuit calendar (jsonld) ----------------------------------
+SPA_CIRCUIT = {"spa": {
+    "label": "Spa-Francorchamps", "name": "Circuit de Spa-Francorchamps",
+    "match": ["francorchamps", "hours of spa"], "tz": "Europe/Brussels", "geo": [50.4372, 5.9714],
+    "location": "Circuit de Spa-Francorchamps, Route du Circuit 55, 4970 Stavelot, Belgium",
+    "calendar": {   # the block documented for users (docs/configuration.md)
+        "type": "jsonld",
+        "urls": ["https://www.spa-francorchamps.be/en/events/event/list?displayType=List&pageIndex=1&pageSize=12"],
+        "follow_links_regex": r"/en/events/race/\d+_",
+        "series": "SPA", "fail_if_empty": False,
+        "series_map": {"FIA WEC|6 Hours of Spa": "WEC", "24 Hours of Spa": "GTWCE",
+                       "Formula 1|Belgian Grand Prix": "F1"}}}}
+
+
+def test_spa_races_from_circuit_site(tmp_path):
+    """Races only (links under /events/race/; trackdays never fetched), from each race
+    page's JSON-LD, which has raw newlines in strings and midnight-to-midnight dates."""
+    from mscal import main as M
+    from mscal.collectors.jsonld import JsonLdCollector
+
+    fetched = []
+
+    def handler(req):
+        url = str(req.url)
+        fetched.append(url)
+        if "/events/event/list" in url:
+            return httpx.Response(200, text=(FIX / "spa/list.html").read_text())
+        m = __import__("re").search(r"/events/race/(\d+)_", url)
+        if m:
+            return httpx.Response(200, text=(FIX / f"spa/race-{m.group(1)}.html").read_text(newline=""))
+        return httpx.Response(404)
+
+    http = httpx.Client(transport=httpx.MockTransport(handler))
+    state = State(tmp_path)
+    cfg = M._circuit_collectors({"tracked_circuits": SPA_CIRCUIT})["circuit-spa"]
+    col = JsonLdCollector("circuit-spa", cfg, http, state, Geocoder(http, state, enabled=False))
+
+    now = {s.name: s for s in col.collect(2026)}
+    assert set(now) == {"SUPER SPA", "24H 2CV"}
+    sspa = now["SUPER SPA"]
+    assert sspa.all_day and (str(sspa.start), str(sspa.end)) == ("2026-10-02", "2026-10-05")  # Fri..Sun
+    assert sspa.session_type == SessionType.EVENT and sspa.series == "SPA"
+    assert sspa.extra_labels == ["Spa-Francorchamps"] and sspa.tz == "Europe/Brussels"
+    assert sspa.geo == (50.4372, 5.9714)
+
+    nxt = {s.name: s for s in col.collect(2027)}
+    assert {s.series for s in nxt.values()} == {"WEC", "GTWCE", "F1"}   # tagged, so hidden when covered
+    assert str(nxt["CROWDSTRIKE 24 HOURS OF SPA"].end) == "2027-06-28"
+    assert not any("/trackday/" in u or "/events/event/933" in u for u in fetched)
