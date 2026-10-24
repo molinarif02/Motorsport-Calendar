@@ -10,6 +10,7 @@
 - Status page: each source links to the calendars it feeds, and
   `status.html?calendar=<name>` shows one calendar's page (Subscribe, Copy URL, its
   event count and its sources).
+  `?calendar=wec`, `?calendar=wec.ics` and `?calendar=calendars/wec.ics` all work.
 - `status.json` lists the calendars (`calendars`: slug, name, kind, events, url, sources).
 
 ## 1.3.2 – 2026-10-24

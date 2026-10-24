@@ -126,7 +126,8 @@ function state(c) {
 }
 
 // ?calendar=<slug>: the same page for one championship / circuit calendar
-const only = new URLSearchParams(location.search).get("calendar");
+const only = (new URLSearchParams(location.search).get("calendar") || "")
+  .toLowerCase().replace(/^.*\//, "").replace(/\.ics$/, "") || null;   // also accepts wec.ics
 let feed = new URL("motorsport.ics", location.href);
 function setFeed(path) {   // webcal:// opens the subscribe dialog on iPhone/Mac
   feed = new URL(path, location.href);
