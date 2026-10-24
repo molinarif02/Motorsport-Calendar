@@ -22,6 +22,7 @@ output:
   refresh_minutes: 60               # hint only; Apple uses the interval you choose when subscribing
   keep_past_days: 45                # past events kept in the feed
   alarm_minutes: 0                  # e.g. 15 = reminder before every qualifying and race
+  per_calendar: true                # also /calendars/<championship>.ics and /calendars/<circuit>.ics
 
 schedule:
   interval_minutes: 180             # normal cadence

@@ -28,7 +28,7 @@
   main { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
   header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; justify-content: space-between; }
   h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
-  h1 span { color: var(--accent); }
+  h1 .dot { color: var(--accent); }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .btn { display: inline-block; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line);
          background: var(--card); color: var(--text); text-decoration: none; font-size: 14px; cursor: pointer; }
@@ -41,6 +41,7 @@
   .banner { border-radius: 12px; padding: 10px 14px; margin: 0 0 16px; display: none; }
   .banner.bad { display: block; background: var(--bad-bg); color: var(--bad); }
   .banner.warn { display: block; background: var(--warn-bg); color: var(--warn); }
+  main > table { margin-top: 20px; }
   table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line);
           border-radius: 12px; overflow: hidden; }
   th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -56,6 +57,13 @@
   .pill.bad { color: var(--bad); background: var(--bad-bg); }
   .msg { font-size: 13px; color: var(--muted); margin-top: 4px; word-break: break-word; }
   .msg.err { color: var(--bad); }
+  .cals { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .cal { font-size: 12px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line);
+         color: var(--text); text-decoration: none; background: var(--bg); }
+  .cal:hover { border-color: var(--accent); color: var(--accent); }
+  .back { display: inline-block; margin-bottom: 10px; color: var(--muted); text-decoration: none; font-size: 14px; }
+  .back:hover { color: var(--accent); }
+  [hidden] { display: none !important; }
   footer { color: var(--muted); font-size: 13px; margin-top: 16px; }
   @media (max-width: 560px) {
     thead { display: none; }
@@ -69,19 +77,20 @@
 </head>
 <body>
 <main>
+  <a class="back" id="back" href="status.html" hidden>← All calendars</a>
   <header>
-    <h1><span>●</span> Motorsport feed</h1>
+    <h1><span class="dot">●</span> <span id="title">Motorsport feed</span></h1>
     <div class="actions">
       <a class="btn primary" id="subscribe" href="motorsport.ics">Subscribe</a>
       <button class="btn" id="copy" type="button">Copy feed URL</button>
-      <a class="btn" href="status.json">status.json</a>
+      <a class="btn" id="json" href="status.json">status.json</a>
     </div>
   </header>
 
   <section class="summary">
     <div class="tile"><div class="k">Last run</div><div class="v" id="gen">–</div><div class="s" id="gen-abs"></div></div>
     <div class="tile"><div class="k">Next run</div><div class="v" id="next">–</div><div class="s" id="next-abs"></div></div>
-    <div class="tile"><div class="k">Events</div><div class="v" id="events">–</div><div class="s">in the calendar</div></div>
+    <div class="tile"><div class="k">Events</div><div class="v" id="events">–</div><div class="s" id="events-s">in the calendar</div></div>
     <div class="tile"><div class="k">Sources</div><div class="v" id="sources">–</div><div class="s" id="sources-s"></div></div>
   </section>
 
@@ -116,9 +125,15 @@ function state(c) {
   return ["ok", "OK · refreshed"];
 }
 
-// feed link: webcal:// opens the subscribe dialog on iPhone/Mac
-const feed = new URL("motorsport.ics", location.href);
-$("subscribe").href = "webcal://" + feed.host + feed.pathname;
+// ?calendar=<slug>: the same page for one championship / circuit calendar
+const only = new URLSearchParams(location.search).get("calendar");
+let feed = new URL("motorsport.ics", location.href);
+function setFeed(path) {   // webcal:// opens the subscribe dialog on iPhone/Mac
+  feed = new URL(path, location.href);
+  $("subscribe").href = "webcal://" + feed.host + feed.pathname;
+}
+setFeed("motorsport.ics");
+if (only) { $("back").hidden = false; $("json").hidden = true; }
 $("copy").onclick = async () => {
   try { await navigator.clipboard.writeText(feed.href); $("copy").textContent = "Copied"; }
   catch { prompt("Feed URL", feed.href); }
@@ -136,9 +151,27 @@ function render() {
     $("next").textContent = next < now ? "due" : ago(now - next);
     $("next-abs").textContent = `${fmtTime(next)} · every ${data.next_run_minutes} min`;
   }
-  $("events").textContent = data.events;
+  const cals = data.calendars || [];
+  const cal = only ? cals.find((c) => c.slug === only) : null;
+  if (only && !cal) {
+    $("title").textContent = "Calendar not found";
+    $("subscribe").hidden = $("copy").hidden = true;
+    document.querySelector(".summary").hidden = true;
+    $("rows").innerHTML = `<tr><td colspan="3">No calendar called “${esc(only)}”. It may have been removed from the config.</td></tr>`;
+    return;
+  }
+  if (cal) {
+    $("title").textContent = cal.name;
+    document.title = `${cal.name} · Motorsport feed`;
+    setFeed(cal.url);
+    $("events").textContent = cal.events;
+    $("events-s").textContent = "in this calendar";
+  } else {
+    $("events").textContent = data.events;
+  }
+  const feeds = (name) => cals.filter((c) => c.sources.includes(name));
 
-  const cols = Object.entries(data.collectors || {});
+  const cols = Object.entries(data.collectors || {}).filter(([n]) => !cal || cal.sources.includes(n));
   const failing = cols.filter(([, c]) => !c.ok);
   $("sources").textContent = `${cols.length - failing.length}/${cols.length}`;
   $("sources-s").textContent = failing.length ? `${failing.length} failing` : "all working";
@@ -153,7 +186,9 @@ function render() {
     const [cls, label] = state(c);
     const msgs = [...(c.errors || []).map((e) => `<div class="msg err">${esc(e)}</div>`),
                   ...(c.notes || []).map((e) => `<div class="msg">${esc(e)}</div>`)].join("");
-    return `<tr><td><div class="name">${esc(name)}</div>${msgs}</td>
+    const links = cal ? "" : feeds(name).map((k) =>
+      `<a class="cal" href="?calendar=${encodeURIComponent(k.slug)}">${esc(k.name)} →</a>`).join("");
+    return `<tr><td><div class="name">${esc(name)}</div>${msgs}${links ? `<div class="cals">${links}</div>` : ""}</td>
               <td><span class="pill ${cls}">${label}</span></td>
               <td class="num" data-k="Sessions:">${c.sessions}</td></tr>`;
   }).join("");

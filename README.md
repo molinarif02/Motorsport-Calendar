@@ -33,6 +33,8 @@ Docker Compose.
   sessions update in place (stable UIDs + `SEQUENCE`), and cancelled ones are marked.
 - **Robust**: a broken scraper keeps serving its last good data and is reported in
   `status.json`, which you can read as a page at `/status.html`.
+- **One feed or one per championship**: `motorsport.ics` has everything, and
+  `/calendars/` has a calendar per configured championship and tracked circuit.
 - **Configurable**: enable MotoGP / Moto2 / Moto3, GT World Challenge America and
   Asia, IGTC, ELMS, F1 and more with one line each, and track additional circuits.
 - **Small**: about 50 MB of dependencies on python:3.14-slim (Debian 13, arm64 and amd64), and a

@@ -1,6 +1,10 @@
 # Subscribing
 
-Use the feed's public URL everywhere: `https://<your-host>/motorsport.ics`. Some apps
+Use the feed's public URL everywhere: `https://<your-host>/motorsport.ics`. Or, to get
+one calendar per championship (its own colour, and hideable with one tap), subscribe
+to the files under `https://<your-host>/calendars/` instead, e.g. `…/calendars/wec.ics`.
+The status page lists them, each with a Subscribe button. Use one or the other, not
+both, or every event appears twice. Some apps
 prefer the `webcal://<your-host>/motorsport.ics` form, which is the same feed.
 
 A subscribed calendar is **read-only** and refreshed by the client on its own

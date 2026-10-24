@@ -207,6 +207,45 @@ def test_failing_collector_serves_cache(env, monkeypatch):
     assert status["collectors"]["wrc"] == {**status["collectors"]["wrc"], "ok": False, "using_cache": True}
 
 
+def test_per_calendar_files(env):
+    """One calendar per configured championship (manual entries by their series tag)
+    and per tracked circuit; listed in status.json; removed with the championship."""
+    cfg, tmp = env
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    status = json.loads((tmp / "www" / "status.json").read_text())
+    cals = {c["slug"]: c for c in status["calendars"]}
+    assert set(cals) == {"wec", "gtwce", "wrc", "dm", "monza"}
+    assert cals["dm"]["sources"] == ["manual"] and cals["monza"]["kind"] == "circuit"
+    assert cals["monza"]["name"] == "Monza" and cals["wrc"]["url"] == "calendars/wrc.ics"
+
+    def summaries(slug):
+        cal = Calendar.from_ical((tmp / "www" / "calendars" / f"{slug}.ics").read_bytes())
+        return cal, {str(e["summary"]) for e in cal.walk("VEVENT")}
+
+    _, combined = _events(tmp / "www")
+    cal, wrc = summaries("wrc")
+    assert wrc and all(n.startswith("[WRC]") for n in wrc) and wrc <= set(combined)
+    assert str(cal["x-wr-calname"]) == "Motorsport – FIA World Rally Championship"
+    assert "x-apple-calendar-color" not in cal           # each app picks its own colour
+    _, monza = summaries("monza")                        # every session at Monza, any series
+    assert {"[MONZA] [Event] Monza Historic", "[WEC] [Free Practice] Free Practice 1 – 6 Hours of Monza"} <= monza
+    _, gtwce = summaries("gtwce")                        # the circuit's list feeds only monza.ics
+    assert not any("Powered by AWS" in n for n in gtwce)
+    assert summaries("dm")[1] == {"[DM] [Event] Finals"}
+    # same UIDs as the combined feed, so an event is the same event everywhere
+    uids = {str(e["uid"]) for e in Calendar.from_ical((tmp / "www" / "motorsport.ics").read_bytes()).walk("VEVENT")}
+    assert {str(e["uid"]) for e in summaries("wrc")[0].walk("VEVENT")} <= uids
+
+    cfg["collectors"]["wrc"]["enabled"] = False          # championship removed from the config
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    assert not (tmp / "www" / "calendars" / "wrc.ics").exists()
+
+    cfg["output"]["per_calendar"] = False                # opt out: no files at all
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    assert not list((tmp / "www" / "calendars").glob("*.ics"))
+    assert json.loads((tmp / "www" / "status.json").read_text())["calendars"] == []
+
+
 def test_removed_manual_file_is_ok_and_empties(env):
     """No manual.yaml (or no entries) is a valid state, not a failure; its events go."""
     cfg, tmp = env

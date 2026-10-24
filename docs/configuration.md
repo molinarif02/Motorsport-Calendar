@@ -36,6 +36,27 @@ docker compose run --rm generator providers    # championships available to `mot
 | `refresh_minutes` | `60` | refresh hint for clients. Most clients use their own setting. |
 | `keep_past_days` | `45` | how long finished events stay in the feed |
 | `alarm_minutes` | `0` | if greater than 0, adds a reminder that many minutes before every qualifying and race |
+| `per_calendar` | `true` | also write one calendar per championship and per tracked circuit, under `/calendars/` (see below) |
+
+### Per-championship calendars
+
+Besides the combined `motorsport.ics`, each run writes `calendars/<name>.ics`:
+
+- one per **championship you have configured**: the series tag of each enabled
+  collector (`wec.ics`, `gtwce.ics`, `wrc.ics`, `gtopen.ics`, `24h.ics`, `dm.ics`,
+  `fd.ics`…). Entries in `manual.yaml` go into the file of the series they're tagged
+  with; a series that only exists in `manual.yaml` gets its own file. Disabled
+  championships get no file, and a file is deleted when its championship is removed.
+- one per **tracked circuit** (`monza.ics`), with every session held there, whatever
+  the series, including events from the circuit's own list (F1, Lamborghini…). Series
+  that come only from a circuit's list get no championship file.
+
+They are named "Motorsport – <championship>", carry no colour (so each app picks a
+different one), and use the same event UIDs as the combined feed. The status page
+links each source to the calendars it feeds, and `status.html?calendar=<name>` shows
+one calendar's own page with its Subscribe button. Subscribe to either the combined
+feed or the separate ones, not both, or you'll see every event twice. Cost: about half
+a second more per run on a Raspberry Pi 5, and a few hundred KB of disk.
 
 ## `schedule`
 

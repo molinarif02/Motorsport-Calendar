@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.0 – 2026-10-24
+
+- Per-championship calendars: besides `motorsport.ics`, each run writes
+  `calendars/<name>.ics`, one per configured championship (manual entries by their
+  series tag) and one per tracked circuit (every session held there). Same event UIDs
+  as the combined feed; removed championships lose their file. `output.per_calendar`
+  (default on) turns it off. nginx serves `/calendars/*.ics`.
+- Status page: each source links to the calendars it feeds, and
+  `status.html?calendar=<name>` shows one calendar's page (Subscribe, Copy URL, its
+  event count and its sources).
+- `status.json` lists the calendars (`calendars`: slug, name, kind, events, url, sources).
+
 ## 1.3.2 – 2026-10-24
 
 - A missing or empty `manual.yaml` is no longer reported as failing. Before, the

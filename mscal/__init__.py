@@ -19,4 +19,4 @@ Foundation, either version 3 of the License, or (at your option) any later versi
 It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for details.
 """
 
-__version__ = "1.3.2"
+__version__ = "1.4.0"
