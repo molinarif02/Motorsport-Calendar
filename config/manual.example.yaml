@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+# EXAMPLE for manual events. Not used unless you add a `manual` collector to
+# config.yaml and copy this file next to it as manual.yaml (docs/configuration.md#manual-events).
 # Hand-maintained events for series without a reliable machine-readable schedule.
 # Types: FP, QUALI, RACE, STAGE, SHAKEDOWN, OTHER.  Times are LOCAL to `tz`.
 # Use `dates:` alone for an all-day placeholder until the timetable is out;

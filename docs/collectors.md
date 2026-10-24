@@ -14,7 +14,7 @@ A collector turns one data source into `Session` objects (see
 | `gtopen` | `mscal/collectors/gtopen.py` | gtopen.gtsport.es calendar (Next.js payload) + each round's schedule PDF | PDF layout is the weak point |
 | `jsonld` | `mscal/collectors/jsonld.py` | schema.org events embedded in web pages | depends on each site's markup |
 | `tribe` | `mscal/collectors/tribe.py` | WordPress "The Events Calendar" REST API (Monza) | API checked 2026-10 |
-| `manual` | `mscal/collectors/manual.py` | `config/manual.yaml` | exactly as good as what you type |
+| `manual` | `mscal/collectors/manual.py` | `manual.yaml` (optional; not enabled by default) | exactly as good as what you type |
 
 ## Failure handling
 

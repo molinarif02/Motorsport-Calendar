@@ -20,9 +20,8 @@ python -m mscal providers --config config/config.yaml
 python -m mscal run       --config config/config.yaml --data ./data --out ./www
 ```
 
-`manual.yaml` is referenced as `/config/manual.yaml` (its path in the container).
-Locally, either override `collectors.manual.file`, or ignore the validate message
-about it.
+The default `config.yaml` has no `manual` collector. If you add one for local runs,
+point `file` at a local path (in the container it is `/config/manual.yaml`).
 
 ## Tests
 

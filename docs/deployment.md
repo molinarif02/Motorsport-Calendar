@@ -114,7 +114,7 @@ Keep your own configuration in `config.local/`, which git ignores, so `git pull`
 touches it:
 
 ```bash
-mkdir -p config.local && cp config/config.yaml config/manual.yaml config.local/
+mkdir -p config.local && cp config/config.yaml config.local/   # plus manual.yaml, if you use one
 echo "CONFIG_DIR=./config.local" >> .env
 docker compose up -d
 ```

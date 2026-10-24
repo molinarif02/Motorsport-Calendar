@@ -100,7 +100,7 @@ def env(tmp_path, monkeypatch):
     cfg["seasons"] = [YEAR]
     for name in ("24h", "imsa", "dm", "fd", "gtopen"):  # covered by test_collectors_live_markup.py
         cfg["collectors"][name]["enabled"] = False
-    cfg["collectors"]["manual"]["file"] = str(tmp_path / "manual.yaml")
+    cfg["collectors"]["manual"] = {"type": "manual", "file": str(tmp_path / "manual.yaml")}  # optional, added like a user would
     (tmp_path / "manual.yaml").write_text(yaml.safe_dump({"events": [{
         "series": "DM", "championship": "Drift Masters", "discipline": "Drift",
         "event": "Finals", "tz": "Europe/Warsaw", "location": "Warsaw",

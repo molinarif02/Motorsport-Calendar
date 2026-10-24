@@ -1,9 +1,11 @@
 # Configuration reference
 
-Two files live in `config/`, which is mounted read-only at `/config`:
+The configuration folder (`config/`, or `config.local/` with `CONFIG_DIR`, see
+[deployment.md](deployment.md#updating)) is mounted read-only at `/config`:
 
 - `config.yaml`: everything below.
-- `manual.yaml`: hand-written sessions (see [the manual collector](#manualyaml)).
+- `manual.yaml`: optional hand-written sessions, only if you add the `manual`
+  collector (see [Manual events](#manual-events)).
 
 Both are re-read before every run. To check them offline without touching anything:
 
@@ -170,11 +172,9 @@ them.
 
 | key | default | |
 |---|---|---|
-| `file` | `/config/manual.yaml` | |
+| `file` | `/config/manual.yaml` | path inside the container |
 
-A missing file, or one with no entries, just adds nothing; the source is still
-reported as OK. To drop the source completely, remove the `manual:` block or set
-`enabled: false`.
+Optional, and not in the default `config.yaml`. See [Manual events](#manual-events).
 
 ## `tracked_circuits`
 
@@ -205,11 +205,34 @@ names, which is why `spa-francorchamps` is safer than `spa`.
 
 See [streaming.md](streaming.md).
 
-## `manual.yaml`
+## Manual events
 
-Use this file for series without a usable data source (GT Open, 24H Series, Drift
-Masters, Formula Drift), or to add anything else. Times are local to the entry's
-`tz`.
+For anything no collector covers: a series without a data source, a one-off event,
+or a fix while a scraper is broken. It's **optional, and off by default**: the shipped
+`config.yaml` has no `manual` collector.
+
+**If you need it**, add the collector to `config.yaml` and create `manual.yaml` next
+to it (start from the example):
+
+```yaml
+collectors:
+  # ...your other collectors...
+  manual:
+    type: manual
+    file: /config/manual.yaml       # path inside the container
+```
+
+```bash
+cp config/manual.example.yaml config.local/manual.yaml   # then replace the example entries
+docker compose run --rm generator validate
+```
+
+**If you don't need it (anymore)**, remove the `manual:` block from `config.yaml`;
+the `manual.yaml` file can then go too. If you only delete or empty the file and keep
+the block, nothing breaks: the source adds no events and is reported as OK with 0
+sessions, but `validate` will point out the missing file.
+
+The file format (times are local to each entry's `tz`):
 
 ```yaml
 events:

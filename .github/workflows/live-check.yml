@@ -32,9 +32,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Run once against the live sources
         run: |
-          sed 's#/config/manual.yaml#config/manual.yaml#' config/config.yaml > ci-config.yaml
-          python -m mscal validate --config ci-config.yaml
-          python -m mscal run --config ci-config.yaml --data ./data --out ./www
+          python -m mscal validate --config config/config.yaml
+          python -m mscal run --config config/config.yaml --data ./data --out ./www
       - name: Summary
         if: always()
         run: |

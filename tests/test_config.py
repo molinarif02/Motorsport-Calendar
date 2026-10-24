@@ -18,9 +18,7 @@ CFG = Path("config/config.yaml")
 
 
 def _cfg() -> dict:
-    cfg = yaml.safe_load(CFG.read_text())
-    cfg["collectors"]["manual"]["file"] = "config/manual.yaml"
-    return cfg
+    return yaml.safe_load(CFG.read_text())
 
 
 def test_catalog_covers_every_installed_provider():

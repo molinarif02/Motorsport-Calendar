@@ -38,7 +38,8 @@ schedule:
 #   creventic     Michelin 24H Series          imsa          IMSA WeatherTech
 #   driftmasters  Drift Masters                formuladrift  Formula DRIFT
 #   gtopen        International GT Open        tribe/jsonld  circuit event calendars
-#   manual        hand-written sessions in manual.yaml
+#   manual        hand-written sessions from a manual.yaml (optional, not enabled here:
+#                 see docs/configuration.md#manual-events)
 # Labels (series tag, championship, race type) come from built-in defaults; any key
 # can be overridden. GT/circuit series keep only FP, QUALI and RACE (`session_types`).
 # -----------------------------------------------------------------------------
@@ -63,9 +64,6 @@ collectors:
   gtopen:
     type: gtopen                    # International GT Open: calendar + each round's schedule PDF
     # skip_regex: "\\btest\\b"        # rounds to ignore (default: tests)
-  manual:
-    type: manual
-    file: /config/manual.yaml       # anything without a collector, and one-off fixes
 
   # ---- more championships: set `enabled: true` to add them --------------------
   gtwca:  {type: motocal, provider: gtwc-america, enabled: false}

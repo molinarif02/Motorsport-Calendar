@@ -7,6 +7,9 @@
   cache. Collectors can now declare that an empty result is valid (`may_be_empty`;
   only `manual` does). For scrapers, an empty result still counts as a failure, so
   the last good data is kept when a website changes.
+- The `manual` collector is no longer in the default `config.yaml`; add it only if you
+  need manual events. The example file is now `config/manual.example.yaml`.
+  docs/configuration.md ("Manual events") explains how to add or remove it.
 
 ## 1.3.1 – 2026-10-19
 
