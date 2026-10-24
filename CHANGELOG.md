@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.2 – 2026-10-24
+
+- A missing or empty `manual.yaml` is no longer reported as failing. Before, the
+  `manual` source showed "Failing" and kept serving the removed file's events from
+  cache. Collectors can now declare that an empty result is valid (`may_be_empty`;
+  only `manual` does). For scrapers, an empty result still counts as a failure, so
+  the last good data is kept when a website changes.
+
 ## 1.3.1 – 2026-10-19
 
 - After an update, every source is refreshed on the first run. Before, a source that

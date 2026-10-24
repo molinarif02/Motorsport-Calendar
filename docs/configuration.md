@@ -172,6 +172,10 @@ them.
 |---|---|---|
 | `file` | `/config/manual.yaml` | |
 
+A missing file, or one with no entries, just adds nothing; the source is still
+reported as OK. To drop the source completely, remove the `manual:` block or set
+`enabled: false`.
+
 ## `tracked_circuits`
 
 A tracked circuit adds its label (for example `Monza`) and its exact coordinates to

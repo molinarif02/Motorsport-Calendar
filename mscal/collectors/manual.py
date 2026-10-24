@@ -28,6 +28,7 @@ events:
 """
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -37,12 +38,15 @@ import yaml
 from ..models import Session, SessionType
 from .base import Collector
 
+log = logging.getLogger(__name__)
+
 
 class ManualCollector(Collector):
     """Reads ``file`` (default ``/config/manual.yaml``). Each entry carries its own
     series/championship labels, so one manual collector can feed many series."""
 
     required = ("file",)
+    may_be_empty = True   # no file, or no entries: nothing to add, not a failure
 
     @classmethod
     def defaults(cls, cfg: dict) -> dict:
@@ -79,6 +83,7 @@ class ManualCollector(Collector):
     def collect(self, season: int) -> list[Session]:
         path = Path(self.cfg.get("file", "/config/manual.yaml"))
         if not path.exists():
+            log.debug("%s: %s not found; no manual events", self.name, path)
             return []
         doc = yaml.safe_load(path.read_text()) or {}
         out: list[Session] = []

@@ -207,6 +207,24 @@ def test_failing_collector_serves_cache(env, monkeypatch):
     assert status["collectors"]["wrc"] == {**status["collectors"]["wrc"], "ok": False, "using_cache": True}
 
 
+def test_removed_manual_file_is_ok_and_empties(env):
+    """No manual.yaml (or no entries) is a valid state, not a failure; its events go."""
+    cfg, tmp = env
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    assert "[DM] [Event] Finals" in _events(tmp / "www")[1]
+
+    (tmp / "manual.yaml").unlink()
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    status = json.loads((tmp / "www" / "status.json").read_text())
+    assert status["collectors"]["manual"] == {"ok": True, "sessions": 0, "errors": [], "notes": []}
+    assert "[DM] [Event] Finals" not in _events(tmp / "www")[1]   # not kept from the cache
+
+    (tmp / "manual.yaml").write_text("events: []\n")              # emptied instead of removed
+    M.run_once(cfg, tmp / "data", tmp / "www")
+    status = json.loads((tmp / "www" / "status.json").read_text())
+    assert status["collectors"]["manual"]["ok"] is True
+
+
 def test_idle_sources_are_not_refetched(env, monkeypatch):
     """Nothing coming up + refreshed recently -> reuse the cache, no network at all."""
     cfg, tmp = env

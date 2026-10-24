@@ -164,8 +164,9 @@ def run_once(cfg: dict, data_dir: Path, out_dir: Path) -> list[Session]:
                 msg = f"{season}: {type(e).__name__}: {e}"
                 # next year's calendar is often not published yet: that is not an error
                 (notes if season > date.today().year else errors).append(msg)
-        # success = at least one season produced data (next year is often empty)
-        if got:
+        # success = at least one season produced data (next year is often empty), or
+        # the source may legitimately be empty and nothing raised
+        if got or (cls.may_be_empty and not errors):
             state.save_collector(name, got)
             state.kv_set("refreshed", name, _block_hash(ccfg))
             status[name] = {"ok": True, "sessions": len(got), "errors": errors, "notes": notes}

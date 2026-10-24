@@ -45,6 +45,10 @@ class Collector(ABC):
 
     #: config keys that must be present after defaults are applied
     required: tuple[str, ...] = ("series",)
+    #: True if returning no sessions is a valid answer (a local file with no entries).
+    #: Otherwise an empty result counts as a failure and the last good data is served,
+    #: because for a scraper it usually means the website changed.
+    may_be_empty: bool = False
 
     def __init__(self, name: str, cfg: dict, http: httpx.Client, state: State, geo: Geocoder):
         self.name = name
