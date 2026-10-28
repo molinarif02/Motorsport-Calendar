@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.2 – 2026-10-28
+
+- Status page: race car favicon (inline SVG, readable at 16 px on light and dark tab bars).
+
 ## 1.4.1 – 2026-10-24
 
 - `jsonld` reader: accepts JSON-LD with raw line breaks inside strings (it used to
