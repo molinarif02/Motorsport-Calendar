@@ -75,16 +75,10 @@ else returns 404.
    `docker compose --profile tunnel up -d`.
 
 If the `tunnel` container keeps restarting with "Provided Tunnel token is not valid",
-the value in `.env` isn't the bare token. Check it without printing it:
-
-```bash
-python3 scripts/check-tunnel-token.py     # run next to docker-compose.yml
-```
-
-It reports a pasted `--token` or whole command, spaces, a Windows line ending, or
-duplicate `TUNNEL_TOKEN` lines, and prints the tunnel id when the token is valid. Then
-recreate the container so it reads the new value:
-`docker compose --profile tunnel up -d --force-recreate tunnel`.
+the value in `.env` isn't the bare token. The usual causes are a pasted `--token` or the
+whole command, quotes or spaces, a Windows line ending, or a second `TUNNEL_TOKEN=`
+line (compose uses the last one). Fix the line, then recreate the container so it reads
+the new value: `docker compose --profile tunnel up -d --force-recreate tunnel`.
 
 **Option B: your existing reverse proxy** (Caddy, Traefik, Nginx Proxy Manager…).
 Point it at `<pi>:8080`. For example, with Caddy:

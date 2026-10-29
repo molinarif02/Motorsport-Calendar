@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.3 – 2026-10-29
+
+- Removed `scripts/check-tunnel-token.py`; docs/deployment.md lists the usual token mistakes instead.
+
 ## 1.4.2 – 2026-10-28
 
 - Status page: race car favicon (inline SVG, readable at 16 px on light and dark tab bars).
